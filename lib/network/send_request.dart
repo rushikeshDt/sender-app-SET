@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:sender_app/network/client.dart';
 import 'package:socket_io_client/socket_io_client.dart';
 
 class RequestWebSocket {
@@ -14,7 +13,8 @@ class RequestWebSocket {
     return _instance!;
   }
 
-  Stream<String> sendRequest(String uId, String senderId) {
+  Stream<Map<String, dynamic>> sendRequest(
+      String userEmail, String senderEmail) {
     final Socket socket =
         io('https://websocket-server-set.glitch.me', <String, dynamic>{
       'transports': ['websocket'],
@@ -23,11 +23,11 @@ class RequestWebSocket {
     var tries = 0;
 
     // Create a StreamController
-    final _myStreamController = StreamController<String>();
-    Stream<String> responseStream = _myStreamController.stream;
+    final _myStreamController = StreamController<Map<String, dynamic>>();
+    Stream<Map<String, dynamic>> responseStream = _myStreamController.stream;
 
     // Function to add data to the stream
-    void addDataToStream(String data) {
+    void addDataToStream(Map<String, dynamic> data) {
       _myStreamController.add(data);
     }
 
@@ -41,7 +41,10 @@ class RequestWebSocket {
 
     socket.onConnectError((data) {
       print("could not connect");
-      addDataToStream("could not connect");
+      addDataToStream({
+        "status": "COULD_NOT_CONNECT",
+        "message": "failed to connect to server"
+      });
     });
 
     socket.onConnect((_) {
@@ -49,13 +52,17 @@ class RequestWebSocket {
       print('Connected: $socketId');
 
       //sending location request to server
-      socket.emit('locationRequest',
-          {'uId': uId, 'socketId': socketId, 'senderId': senderId});
+      socket.emit('locationRequest', {
+        'userEmail': userEmail,
+        'socketId': socketId,
+        'senderEmail': senderEmail
+      });
 
       //senderLocation received from server
       socket.once('senderLocation', (data) {
         print('Received data from server: $data');
-        addDataToStream(data.toString() + "\n dissconnecting....");
+        addDataToStream(
+            {"status": "SENDER_LOCATION", "data": data['data']['location']});
         socket.disconnect();
         socket.destroy();
       });
@@ -63,37 +70,30 @@ class RequestWebSocket {
       //server message
       socket.on('serverMessage', (data) async {
         print('server message: $data');
-        addDataToStream(data.toString());
+        addDataToStream(
+            {"status": 'SERVER_MESSAGE', "message": data.toString()});
 
         if (data['code'] == "NO_RECEIVER_CONNECTED") {
           if (tries <= 4) {
             print(
                 'receiver is yet to connect to server. retrying in 10 secs, remianing tries: ${4 - tries}');
-            addDataToStream(
-                'receiver is yet to connect to server. retrying in 10 secs, remianing tries: ${4 - tries}');
+            addDataToStream({
+              'status': "NO_RECEIVER_CONNECTED",
+              'message':
+                  'receiver is yet to connect to server. retrying in 10 secs, remianing tries: ${4 - tries}'
+            });
             await Future.delayed(const Duration(seconds: 10));
 
-            socket.emit('locationRequest',
-                {'uId': uId, 'socketId': socketId, 'senderId': senderId});
+            socket.emit('locationRequest', {
+              'userEmail': userEmail,
+              'socketId': socketId,
+              'senderEmail': senderEmail
+            });
           }
 
           tries++;
         }
       });
-    });
-
-    Client clnt = new Client();
-
-    //creating notification
-    clnt.post("sendNotification/", {
-      "userId": "r1",
-      "receiverId": "s1",
-      "startTime": "2:06pm",
-      "endTime": "3:06pm",
-      "reqFlag": "true"
-    }).then((value) async {
-      print("response is ${value}");
-      print("request sent !");
     });
 
     return responseStream;
@@ -106,5 +106,9 @@ class RequestWebSocket {
       socket.disconnect();
       print("disconnected");
     }
+  }
+
+  bool isConnected() {
+    return socket.connected;
   }
 }

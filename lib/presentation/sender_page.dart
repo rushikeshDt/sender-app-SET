@@ -26,7 +26,7 @@
 //   String? senderId;
 //   TimeOfDay? _startTime;
 //   TimeOfDay? _endTime;
-//   final DeviceInfo _deviceInfo = DeviceInfo.getInstance();
+//   final DeviceInfo _deviceInfo = DeviceInfo;
 //   String? serverIP;
 
 //   Future<void> _selectStartTime(BuildContext context) async {

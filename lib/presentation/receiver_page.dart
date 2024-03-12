@@ -21,7 +21,7 @@
 //   TextEditingController textController2 = TextEditingController();
 //   TextEditingController textController3 = TextEditingController();
 //   String? senderId;
-//   String? receiverId;
+//   String? receiverEmail;
 //   String? serverIP;
 
 //   @override
@@ -68,7 +68,7 @@
 //                 print('Input 2: ${textController2.text}');
 //                 print("sending request....");
 //                 setState(() {
-//                   receiverId = textController1.text;
+//                   receiverEmail = textController1.text;
 //                   senderId = textController2.text;
 //                   serverIP = textController3.text;
 //                 });
@@ -81,9 +81,9 @@
 //               child: Column(
 //                 children: [
 //                   const Text('response from server'),
-//                   (receiverId != null && senderId != null)
+//                   (receiverEmail != null && senderId != null)
 //                       ? StreamBuilder(
-//                           stream: sendRequest(receiverId!, senderId!),
+//                           stream: sendRequest(receiverEmail!, senderId!),
 //                           builder: (context, snapshot) {
 //                             if (snapshot.hasData) {
 //                               // Use the data from the stream to build your UI
@@ -98,7 +98,7 @@
 //                           },
 //                         )
 //                       : const Text(
-//                           'please enter receiverId & senderId to connect'),
+//                           'please enter receiverEmail & senderId to connect'),
 //                 ],
 //               ),
 //             )

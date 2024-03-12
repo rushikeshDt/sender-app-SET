@@ -30,14 +30,28 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+
+  #for creating a path receiver->sender
   socket_io_client: ^2.0.3+1
-  http: ^1.2.0
+ 
+  #for keeping the app alive in background
   flutter_background_service: ^5.0.5
   shared_preferences: ^2.2.2
   geolocator: ^11.0.0
   fl_toast: ^3.2.0
+
   intl: ^0.19.0
 
+
+  firebase_core: ^2.25.5
+  firebase_auth: ^4.17.6
+  cloud_firestore: ^4.15.6
+  firebase_storage: ^11.6.9
+  google_maps_flutter: ^2.5.3
+  url_launcher: ^6.2.5
+  #for TextHandler
+  path_provider: ^2.0.2
+  flutter_webrtc: ^0.9.48+hotfix.1
 
 
   # The following adds the Cupertino Icons font to your application.

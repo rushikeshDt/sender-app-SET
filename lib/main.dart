@@ -1,12 +1,48 @@
+import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:sender_app/presentation/screens/log_in.dart';
-
-import 'package:sender_app/presentation/sender_page.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:sender_app/domain/debug_printer.dart';
+import 'package:sender_app/firebase_options.dart';
+import 'package:sender_app/presentation/choose_mode.dart';
+import 'package:sender_app/presentation/screens/login.dart';
+import 'package:sender_app/presentation/screens/request_screen.dart';
+import 'package:sender_app/presentation/screens/sign_up.dart';
+import 'package:sender_app/presentation/screens/video_stream.dart';
+import 'package:sender_app/user/user_info.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.android);
+  await _geoServices();
 
+  DebugFile.createFile();
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  // This widget is the root of your application.
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+        title: 'Flutter Demo',
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+          useMaterial3: true,
+        ),
+        home: ModePage());
+  }
+}
+
+_geoServices() async {
   bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
   if (!serviceEnabled) {
     // Location services are not enabled don't continue
@@ -32,24 +68,5 @@ void main() async {
     // Permissions are denied forever, handle appropriately.
     print(
         'Location permissions are permanently denied, we cannot request permissions.');
-  }
-
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  // This widget is the root of your application.
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: LogInPage(),
-    );
   }
 }

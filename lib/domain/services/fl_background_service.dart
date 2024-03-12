@@ -1,14 +1,21 @@
 import 'dart:async';
-
+import 'dart:io';
 import 'dart:ui';
-import 'package:geolocator/geolocator.dart';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_background_service_android/flutter_background_service_android.dart';
+import 'package:sender_app/domain/debug_printer.dart';
+import 'package:sender_app/domain/local_firestore.dart';
+import 'package:sender_app/domain/signaling.dart';
+import 'package:sender_app/domain/socket_client.dart';
 
+import 'package:sender_app/firebase_options.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:socket_io_client/socket_io_client.dart';
 
 Future<FlutterBackgroundService> initializeService() async {
+  print("[initializeService] initializing service");
   final service = FlutterBackgroundService();
 
   await service.configure(
@@ -40,6 +47,17 @@ void onStart(
     service.on('setAsBackground').listen((event) {
       service.setAsBackgroundService();
     });
+    service.on('stopService').listen((event) async {
+      var snapshot =
+          await FirebaseFirestore.instance.collection('shared').doc('id').get();
+
+      if (snapshot.data() != null) {
+        print("[print] got roomId. hanging up.");
+        await Signaling.hangUp(roomId: snapshot.data()!['roomId'].toString());
+      }
+
+      service.stopSelf();
+    });
   }
 
   // bring to foreground
@@ -47,7 +65,7 @@ void onStart(
     if (service is AndroidServiceInstance) {
       if ((await service.isForegroundService())) {
         service.setForegroundNotificationInfo(
-          title: "My App Service",
+          title: "service for realtime video stream",
           content: "Updated at ${DateTime.now()}",
         );
       }
@@ -61,73 +79,82 @@ void onStart(
     );
   });
 
-  /// Determine the current position of the device.
-  ///
-  /// When the location services are not enabled or permissions
-  /// are denied the `Future` will return an error.
+  late String userEmail = 'userEmail';
+  late String receiverEmail = 'receiverEmail';
+  late int minutesToStart = 0;
+  late int minutesToStop = 5;
+  late List<String> services = ['LIVE_LOCATION', 'VIDEO_STREAM'];
+  late String roomId;
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.android);
+  try {
+    // SharedPreferences info = await SharedPreferences.getInstance();
+    // userEmail = info.getString('userEmail')!;
+    // receiverEmail = info.getString('receiverEmail')!;
+    // minutesToStart = info.getInt("minutesToAutoConnect")!;
+    // minutesToStop = info.getInt('minutesToDissconnect')!;
+    // services = info.getStringList('services')!;
 
-  SharedPreferences info = await SharedPreferences.getInstance();
+    if (services == null) {
+      print('[services.onStart] no service identified in shared preferences');
+      DebugFile.saveTextData(
+          '[services.onStart] no service identified in shared preferences');
+    } else {
+      Future.delayed(Duration(minutes: minutesToStart)).then((value) async {
+        if (services.contains('VIDEO_STREAM')) {
+          roomId = await Signaling.createRoom();
+          FirestoreOps.notifyReceiver(
+              receiverEmail: receiverEmail,
+              userEmail: userEmail,
+              connected: true,
+              roomId: roomId);
 
-  String uId = info.getString('uId')!;
-  String receiverId = info.getString('receiverId')!;
+          print(
+              '[service.onStart] VIDEO_STREAM service successfully activated');
+          DebugFile.saveTextData(
+              '[service.onStart] VIDEO_STREAM service successfully activated');
+        }
+        if (services.contains('LIVE_LOCATION')) {
+          SocketClient.feedParameters(uEmail: userEmail, rEmail: receiverEmail);
+          SocketClient.registerEvents();
+          SocketClient.socket.connect();
 
-  Socket socket =
-      io('https://websocket-server-set.glitch.me', <String, dynamic>{
-    'transports': ['websocket'],
-    'autoConnect': false
-  });
-  socket.onConnectError((data) {});
-
-  socket.onConnect((_) {
-    print('Connected: ${socket.id}');
-
-    var socketId = socket.id ?? 'null socketId';
-
-    socket.emit('senderHello',
-        {'uId': uId, 'socketId': socketId, 'receiverId': receiverId});
-
-    //sendLocation from server
-    socket.on('sendLocation', (data) async {
-      print('Received data from server: $data');
-
-      Position pos = await Geolocator.getCurrentPosition();
-
-      //sending to server
-      socket.emit('myLocation', {
-        'location': {
-          'lat': pos.latitude.toString(),
-          'lang': pos.longitude.toString()
-        },
-        'time': DateTime.now().toLocal().toString(),
-        'uId': uId,
-        'receiverId': data['receiverId'],
-        'receiverSocketId': data['receiverSocketId']
+          print(
+              '[service.onStart] LIVE_LOCATION service successfully activated');
+          DebugFile.saveTextData(
+              '[service.onStart] LIVE_LOCATION service successfully activated');
+        }
       });
-    });
-  });
 
-  int minutesToStart = info.getInt("minutesToAutoConnect")!;
-  int minutesToStop = info.getInt('minutesToDissconnect')!;
+      Future.delayed(Duration(minutes: minutesToStop)).then((value) async {
+        if (services.contains('VIDEO_STREAM')) {
+          await Signaling.hangUp(roomId: roomId);
 
-  print('''
-uId is ${uId},
-minutesToStart is ${minutesToStart},
-minutesToStop is ${minutesToStop}
-''');
-  Future.delayed(Duration(seconds: minutesToStart * 60 - 30))
-      .then((value) async {
-    socket.connect();
-  });
+          print(
+              '[service.onStart] VIDEO_STREAM service successfully deactivated');
+          DebugFile.saveTextData(
+              '[service.onStart] VIDEO_STREAM service successfully deactivated');
+        }
+        if (services.contains('LIVE_LOCATION')) {
+          if (SocketClient.socket.connected) {
+            SocketClient.socket.disconnect();
+            print('[service.onStart] socket is connected disconnecting now');
+            DebugFile.saveTextData(
+                '[service.onStart] socket is connected disconnecting now');
+          }
 
-  Future.delayed(Duration(seconds: minutesToStop * 60)).then((value) {
-    socket.disconnect();
-    service.stopSelf();
-  });
-
-  service.on('stopService').listen((event) async {
-    if (socket.connected) {
-      socket.disconnect();
+          print(
+              '[service.onStart] VIDEO_STREAM service successfully deactivated');
+          DebugFile.saveTextData(
+              '[service.onStart] VIDEO_STREAM service successfully deactivated');
+        }
+      });
     }
-    service.stopSelf();
-  });
+  } catch (e) {
+    print('[service.onStart] error ${e.toString()}');
+    DebugFile.saveTextData('[service.onStart] error ${e.toString()}');
+  }
 }
+
+// Future<void> register(ServiceInstance service, Signaling Signaling) async {
+//   return;
+// }

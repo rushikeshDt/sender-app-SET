@@ -1,0 +1,36 @@
+Variant: debug
+Config: debug
+Store: C:\Users\Rishi\.android\debug.keystore
+Alias: AndroidDebugKey
+MD5: FC:98:2F:08:88:DC:07:E0:45:F1:40:EC:FA:47:74:79
+SHA1: 77:4C:AB:04:04:4B:87:1E:2E:E9:BB:5F:B6:53:2F:96:FE:D3:F6:C0
+SHA-256: 20:D5:0A:00:E6:0E:2D:9C:C6:4A:01:39:AC:D8:71:FB:0C:2B:23:94:44:2C:7E:86:89:6B:43:C6:44:10:B5:04
+Valid until: Wednesday, 16 July, 2053
+----------
+Variant: release
+Config: debug
+Store: C:\Users\Rishi\.android\debug.keystore
+Alias: AndroidDebugKey
+MD5: FC:98:2F:08:88:DC:07:E0:45:F1:40:EC:FA:47:74:79
+SHA1: 77:4C:AB:04:04:4B:87:1E:2E:E9:BB:5F:B6:53:2F:96:FE:D3:F6:C0
+SHA-256: 20:D5:0A:00:E6:0E:2D:9C:C6:4A:01:39:AC:D8:71:FB:0C:2B:23:94:44:2C:7E:86:89:6B:43:C6:44:10:B5:04
+Valid until: Wednesday, 16 July, 2053
+----------
+Variant: profile
+Config: debug
+Store: C:\Users\Rishi\.android\debug.keystore
+Alias: AndroidDebugKey
+MD5: FC:98:2F:08:88:DC:07:E0:45:F1:40:EC:FA:47:74:79
+SHA1: 77:4C:AB:04:04:4B:87:1E:2E:E9:BB:5F:B6:53:2F:96:FE:D3:F6:C0
+SHA-256: 20:D5:0A:00:E6:0E:2D:9C:C6:4A:01:39:AC:D8:71:FB:0C:2B:23:94:44:2C:7E:86:89:6B:43:C6:44:10:B5:04
+Valid until: Wednesday, 16 July, 2053
+----------
+Variant: debugAndroidTest
+Config: debug
+Store: C:\Users\Rishi\.android\debug.keystore
+Alias: AndroidDebugKey
+MD5: FC:98:2F:08:88:DC:07:E0:45:F1:40:EC:FA:47:74:79
+SHA1: 77:4C:AB:04:04:4B:87:1E:2E:E9:BB:5F:B6:53:2F:96:FE:D3:F6:C0
+SHA-256: 20:D5:0A:00:E6:0E:2D:9C:C6:4A:01:39:AC:D8:71:FB:0C:2B:23:94:44:2C:7E:86:89:6B:43:C6:44:10:B5:04
+Valid until: Wednesday, 16 July, 2053
+----------

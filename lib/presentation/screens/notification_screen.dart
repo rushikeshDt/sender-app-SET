@@ -2,8 +2,10 @@ import 'package:fl_toast/fl_toast.dart';
 import 'package:flutter/material.dart';
 
 import 'package:intl/intl.dart';
+import 'package:sender_app/configs/device_info.dart';
+import 'package:sender_app/domain/local_firestore.dart';
 import 'package:sender_app/domain/set_auto_connect.dart';
-import 'package:sender_app/network/client.dart';
+
 import 'package:sender_app/presentation/screens/request_screen.dart';
 import 'package:sender_app/user/user_info.dart';
 
@@ -14,15 +16,19 @@ class NotificationPage extends StatefulWidget {
 }
 
 class _NotificationPageState extends State<NotificationPage> {
-  Future<List<NotificationItem>?> getData() async {
-    Client clnt = Client.getInstance();
-    late List<NotificationItem>? notifications = [];
+  Future<List<NotificationItem>> getData() async {
+    // Client clnt = Client.getInstance();
+    late List<NotificationItem> notifications = [];
+    final String userEmail = CurrentUser.user['userEmail'];
+    print(" currentUser.user['usermail'] ${CurrentUser.user['userEmail']}");
 
     try {
-      Map<String, dynamic> jsonMap =
-          await clnt.post("accessNotifications/", {"userId": UserInfo.userId});
-
-      List<MyModel> modelList = jsonMap.entries.map((entry) {
+      Map<String, dynamic>? map =
+          await FirestoreOps.accessNotification(userEmail);
+      if (map == null) {
+        return notifications;
+      }
+      List<MyModel> modelList = map!.entries.map((entry) {
         return MyModel.fromJson(entry.key, entry.value);
       }).toList();
 
@@ -33,15 +39,23 @@ class _NotificationPageState extends State<NotificationPage> {
 
       modelList.forEach((element) {
         notifications.add(NotificationItem(
-            senderId: element.senderId,
+            senderEmail: element.senderEmail,
             message: element.message,
             startTime: element.startTime,
             endTime: element.endTime,
             id: element.key,
-            reqFlag: element.reqFlag));
+            type: element.type));
       });
-      return notifications!;
+
+      return notifications;
     } catch (err) {
+      Toast(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+              0, 0, 0, DeviceInfo.getDeviceHeight(context) / 4),
+          child: Text(err.toString()),
+        ),
+      );
       return Future.error(err);
     }
   }
@@ -68,33 +82,47 @@ class _NotificationPageState extends State<NotificationPage> {
             ),
           ],
         ),
-        body: FutureBuilder<List<NotificationItem>?>(
+        body: FutureBuilder<List<NotificationItem>>(
           future: getData(),
           builder: (BuildContext context,
-              AsyncSnapshot<List<NotificationItem>?> snapshot) {
+              AsyncSnapshot<List<NotificationItem>> snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               // While data is loading, show a loading indicator or any other widget
-              return const CircularProgressIndicator();
+              return const Center(
+                child: CircularProgressIndicator(),
+              );
             } else if (snapshot.hasError) {
               // If an error occurs during data loading, show an error message
-              return Text("Error loading data: ${snapshot.error}");
+              return Center(
+                child: Text("Error loading data: ${snapshot.error}"),
+              );
+            } else if (snapshot.data == null) {
+              return Center(
+                child: Text("No notifications"),
+              );
             } else {
               // Data has been loaded successfully, display it
               return ListView.builder(
                 itemCount: snapshot.data!.length,
                 itemBuilder: (context, index) {
-                  if (snapshot.data![index].reqFlag == "true") {
+                  if (snapshot.data![index].type == "REQUEST") {
                     return NotificationCard(
                       id: snapshot.data![index].id,
                       message: snapshot.data![index].message,
                       startTime: snapshot.data![index].startTime,
                       endTime: snapshot.data![index].endTime,
-                      senderId: snapshot.data![index].senderId,
+                      senderEmail: snapshot.data![index].senderEmail,
                       context: context,
                     );
                   } else {
+                    print(
+                        '[print] message is ${snapshot.data![index].message}');
                     return SimpleNotification(
-                        msg: snapshot.data![index].message);
+                      message: snapshot.data![index].message,
+                      notId: snapshot.data![index].id,
+                      userEmail: CurrentUser.user['userEmail'],
+                      callback: () => this.setState(() {}),
+                    );
                   }
                 },
               ); // Replace "No data" with your desired default text
@@ -106,34 +134,28 @@ class _NotificationPageState extends State<NotificationPage> {
 
 class NotificationCard extends StatelessWidget {
   final String id;
-  final String senderId;
+  final String senderEmail;
   final String message;
   final String startTime;
   final String endTime;
   final BuildContext context;
 
   const NotificationCard(
-      {required this.senderId,
+      {required this.senderEmail,
       required this.message,
       required this.startTime,
       required this.id,
       required this.endTime,
       required this.context});
 
-  approveRequest() {
-    // Handle "Approve" button press
-    Client clnt = Client.getInstance();
-    clnt.post("notificationResponse/", {
-      "userId": UserInfo.userId,
-      "notification": {
-        this.id: {
-          "message": this.message,
-          "startTime": this.startTime,
-          "endTime": this.endTime,
-          "senderId": this.senderId
-        }
-      },
-      "userResponse": "APPROVE"
+  approveRequest() async {
+    await FirestoreOps.respondNotification({
+      "userEmail": CurrentUser.user['userEmail'],
+      "receiverEmail": senderEmail,
+      "userResponse": "APPROVE",
+      "requestNotificationId": id,
+      "startTime": startTime,
+      "endTime": endTime
     });
     DateTime sdt = DateFormat("h:mm a").parse(startTime);
     DateTime edt = DateFormat("h:mm a").parse(endTime);
@@ -144,32 +166,27 @@ class NotificationCard extends StatelessWidget {
     setAutoConnect(
         endTime: newEndTime,
         startTime: newStartTime,
-        receiverId: this.senderId);
+        receiverEmail: this.senderEmail,
+        services: ['LIVE_LOCATION']);
 
     Toast(
-      child: Text("allowed for user ${this.senderId}"),
+      child: Text("allowed for user ${this.senderEmail}"),
     );
   }
 
-  rejectRequest() {
-    // Handle "Reject" button press
-    Client clnt = Client.getInstance();
-    clnt.post("notificationResponse/", {
-      "userId": UserInfo.userId,
-      "notification": {
-        this.id: {
-          "message": this.message,
-          "startTime": this.startTime,
-          "endTime": this.endTime,
-          "senderId": this.senderId
-        }
-      },
-      "userResponse": "DENY"
+  rejectRequest() async {
+    await FirestoreOps.respondNotification({
+      "userEmail": CurrentUser.user['userEmail'],
+      "receiverEmail": senderEmail,
+      "userResponse": "DENY",
+      "requestNotificationId": id,
+      "startTime": startTime,
+      "endTime": endTime
     });
 
     Toast(
-      child: Text("Denied for user ${this.senderId}"),
-    );
+      child: Text("Denied for user ${this.senderEmail}"),
+    ).show(context);
   }
 
   @override
@@ -181,13 +198,12 @@ class NotificationCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('From: ${this.senderId}',
+            Text('From: ${this.senderEmail}',
                 style: TextStyle(fontWeight: FontWeight.bold)),
             SizedBox(height: 8.0),
-            Text('msg: $message'),
+            Text('message: $message'),
             Text('location start time: $startTime'),
             Text('location end time: $endTime'),
-            Text('request id: $id'),
             SizedBox(height: 8.0),
             Row(
               children: <Widget>[
@@ -226,19 +242,19 @@ class NotificationCard extends StatelessWidget {
 
 class NotificationItem {
   final String id;
-  final String senderId;
+  final String senderEmail;
   final String message;
   final String startTime;
   final String endTime;
-  final String? reqFlag;
+  final String? type;
 
   NotificationItem(
-      {required this.senderId,
+      {required this.senderEmail,
       required this.message,
       required this.startTime,
       required this.endTime,
       required this.id,
-      required this.reqFlag});
+      required this.type});
 }
 
 //for each notification received from server( { id:{ details... }, id:...} )
@@ -247,38 +263,45 @@ class MyModel {
   final String message;
   final String startTime;
   final String endTime;
-  final String senderId;
-  final String reqFlag;
+  final String senderEmail;
+  final String type;
 
   MyModel(
       {required this.key,
       required this.message,
       required this.startTime,
       required this.endTime,
-      required this.senderId,
-      required this.reqFlag});
+      required this.senderEmail,
+      required this.type});
 
-  factory MyModel.fromJson(String key, Map<String, dynamic> json) {
+  factory MyModel.fromJson(String key, Map<String, dynamic> map) {
     return MyModel(
       key: key,
-      message: json['message'] ?? '',
-      startTime: json['startTime'] ?? '',
-      senderId: json['senderId'] ?? '',
-      reqFlag: json['reqFlag'] ?? '',
-      endTime: json['endTime'] ?? '',
+      message: map['message'] ?? '',
+      startTime: map['startTime'] ?? '',
+      senderEmail: map['senderEmail'] ?? '',
+      type: map['type'] ?? '',
+      endTime: map['endTime'] ?? '',
     );
   }
 
   @override
   String toString() {
-    return 'MyModel(key: $key, msg: $message, ltime: $startTime $endTime, senderId: $senderId, req: $reqFlag)';
+    return 'MyModel(key: $key, message: $message, ltime: $startTime $endTime, senderEmail: $senderEmail, req: $type)';
   }
 }
 
 class SimpleNotification extends StatelessWidget {
-  final String msg;
+  final String message;
+  final String notId;
+  final String userEmail;
+  final Function callback;
 
-  const SimpleNotification({required this.msg});
+  const SimpleNotification(
+      {required this.message,
+      required this.notId,
+      required this.userEmail,
+      required this.callback});
 
   @override
   Widget build(BuildContext context) {
@@ -289,16 +312,26 @@ class SimpleNotification extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "general",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
+            Row(
+              children: [
+                const Text(
+                  "general",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+                IconButton(
+                    onPressed: () {
+                      FirestoreOps.deleteNotification(notId, userEmail);
+                      callback();
+                    },
+                    icon: Icon(Icons.delete))
+              ],
             ),
             SizedBox(height: 8),
             Text(
-              msg,
+              message,
               style: TextStyle(fontSize: 14),
             ),
           ],

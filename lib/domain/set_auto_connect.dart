@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:sender_app/domain/debug_printer.dart';
 import 'package:sender_app/domain/services/fl_background_service.dart';
+import 'package:sender_app/domain/services/legacy_fl_background_service.dart';
 import 'package:sender_app/user/user_info.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-setAutoConnect({
-  required TimeOfDay startTime,
-  required TimeOfDay endTime,
-  required String receiverId,
-}) {
+setAutoConnect(
+    {required TimeOfDay startTime,
+    required TimeOfDay endTime,
+    required String receiverEmail,
+    required List<String> services}) {
   late int minutesToAutoConnect;
   late int minutesToDissconnect;
   late int timeSlot;
-  final service = FlutterBackgroundService();
 
   int _calculateTimeDifference(TimeOfDay startTime, TimeOfDay endTime) {
     // Convert time to minutes
@@ -22,7 +23,9 @@ setAutoConnect({
     // Calculate the time difference
     int difference = endMinutes - startMinutes;
     print(
-        'calculating difference in autoConnect. start time is $startTime & endTime is $endTime');
+        '[setAutoConnect.calculateTimeDifference] calculating difference in autoConnect. start time is $startTime & endTime is $endTime');
+    DebugFile.saveTextData(
+        '[setAutoConnect.calculateTimeDifference] calculating difference in autoConnect. start time is $startTime & endTime is $endTime');
     return difference;
   }
 
@@ -30,12 +33,13 @@ setAutoConnect({
     SharedPreferences prefs = await SharedPreferences.getInstance();
 
     prefs.setInt('timeSlot', timeSlot);
-    prefs.setString('uId', UserInfo.userId);
-    prefs.setString('receiverId', receiverId);
+    prefs.setString('userEmail', CurrentUser.user['userEmail']);
+    prefs.setString('receiverEmail', receiverEmail);
 
     prefs.setInt('minutesToAutoConnect',
         minutesToAutoConnect > 1 ? minutesToAutoConnect : 0);
     prefs.setInt('minutesToDissconnect', minutesToDissconnect);
+    prefs.setStringList('services', services);
   }
 
   timeSlot = _calculateTimeDifference(startTime, endTime);
@@ -43,8 +47,22 @@ setAutoConnect({
   minutesToAutoConnect =
       _calculateTimeDifference(TimeOfDay.now(), startTime); //-5
   minutesToDissconnect = _calculateTimeDifference(TimeOfDay.now(), endTime);
-  saveToSharedPreferences().then(
-      (value) => print("successfully stored values in sharedpreferences"));
-  initializeService();
+  saveToSharedPreferences().then((value) {
+    print("[setAutoConnect] successfully stored values in sharedpreferences");
+    DebugFile.saveTextData(
+        "[setAutoConnect] successfully stored values in sharedpreferences");
+  });
+
+  // switch (services) {
+  //   case 'VIDEO_STREAM':
+  //     initializeService();
+  //     break;
+  //   case 'LIVE_LOCATION':
+  //     initializeService();
+  //     break;
+  //   default:
+  // }
+
+  final service = FlutterBackgroundService();
   service.startService();
 }
