@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sender_app/configs/device_info.dart';
 import 'package:sender_app/domain/local_firestore.dart';
+import 'package:sender_app/presentation/choose_mode.dart';
 
 import 'package:sender_app/presentation/screens/location_page.dart';
 import 'package:sender_app/user/user_info.dart';
@@ -75,6 +76,7 @@ class _SenderListPageState extends State<SenderListPage> {
                           eTime: snapshot.data![index].eTime,
                           sTime: snapshot.data![index].sTime,
                           connected: snapshot.data![index].connected,
+                          services: snapshot.data![index].services,
                         );
                       },
                     ); // Replace "No data" with your desired default text
@@ -91,12 +93,14 @@ class SenderCard extends StatelessWidget {
   final String sTime;
   final String eTime;
   final bool connected;
+  final List<String> services;
 
   SenderCard(
       {required this.senderEmail,
       required this.eTime,
       required this.sTime,
-      required this.connected});
+      required this.connected,
+      required this.services});
 
   @override
   Widget build(BuildContext context) {
@@ -107,6 +111,11 @@ class SenderCard extends StatelessWidget {
           children: [
             Text(
               'Sender-email: $senderEmail',
+              style: TextStyle(color: Colors.green, fontSize: 18),
+              softWrap: true,
+            ),
+            Text(
+              'Services: $services',
               style: TextStyle(color: Colors.green, fontSize: 18),
               softWrap: true,
             ),
@@ -133,13 +142,12 @@ class SenderCard extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) =>
-                              LocationPage(senderEmail: senderEmail),
+                          builder: (context) => ModePage(),
                         ),
                       );
                     },
                     child: Text(
-                      'Fetch Location',
+                      'connect',
                       softWrap: true,
                     ),
                   )
@@ -159,22 +167,23 @@ class SenderModel {
   late String sender;
   late String sTime;
   late String eTime;
+  late List<String> services;
   late bool connected;
 
-  SenderModel({
-    required this.sender,
-    required this.sTime,
-    required this.eTime,
-    required this.connected,
-  });
+  SenderModel(
+      {required this.sender,
+      required this.sTime,
+      required this.eTime,
+      required this.connected,
+      required this.services});
 
   factory SenderModel.fromMap(String key, Map<String, dynamic> value) {
     return SenderModel(
-      sender: key,
-      sTime: value['startTime'], // Assuming 'sTime' is a Firestore Timestamp
-      eTime: value['endTime'],
-      connected: value['connected'],
-    );
+        sender: key,
+        sTime: value['startTime'], // Assuming 'sTime' is a Firestore Timestamp
+        eTime: value['endTime'],
+        connected: value['connected'],
+        services: value['services']);
   }
 
   // Map<String, dynamic> toMap() {

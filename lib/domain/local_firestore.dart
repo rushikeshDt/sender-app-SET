@@ -14,6 +14,7 @@ class FirestoreOps {
     String type = notification["type"];
     String message =
         '${userEmail} has requested your location between time ${startTime} and ${endTime}';
+    List<String> services = notification["services"];
 
     try {
       Random random = Random();
@@ -32,6 +33,7 @@ class FirestoreOps {
             'endTime': endTime,
             'senderEmail': userEmail,
             'type': type,
+            'services': services
           }
         },
         SetOptions(merge: true),
@@ -82,6 +84,7 @@ class FirestoreOps {
       String requestNotificationId = _data["requestNotificationId"];
       String startTime = _data["startTime"];
       String endTime = _data["endTime"];
+      List<String> services = _data['services'];
       if (userResponse == 'APPROVE') {
         print("user allowed perm");
 
@@ -92,8 +95,7 @@ class FirestoreOps {
             .set(
           {
             requestNotificationId: {
-              'message':
-                  '$userEmail has accepted your request to share location',
+              'message': '$userEmail has accepted your request for $services',
               'type': 'general',
             },
           },
@@ -111,7 +113,7 @@ class FirestoreOps {
             .set(
           {
             requestNotificationId: {
-              'message': '$userEmail has denied your request to share location'
+              'message': '$userEmail has denied your request for $services'
             },
           },
           SetOptions(merge: true),
@@ -124,7 +126,8 @@ class FirestoreOps {
           receiverEmail: receiverEmail,
           senderEmail: userEmail,
           eTime: endTime,
-          sTime: startTime);
+          sTime: startTime,
+          services: services);
       return 'Data added to the document.';
     } catch (error) {
       print('Error: $error');
@@ -145,7 +148,8 @@ class FirestoreOps {
       {required String receiverEmail,
       required String senderEmail,
       required String sTime,
-      required String eTime}) async {
+      required String eTime,
+      required List<String> services}) async {
     try {
       // Reference to the collection and document
       CollectionReference collectionReference =
@@ -154,7 +158,12 @@ class FirestoreOps {
           collectionReference.doc(receiverEmail);
 
       documentReference.set({
-        senderEmail: {'startTime': sTime, 'endTime': eTime, 'connected': false}
+        senderEmail: {
+          'startTime': sTime,
+          'endTime': eTime,
+          'services': services,
+          'connected': false,
+        }
       }, SetOptions(merge: true));
 
       print('Value added to the array successfully');

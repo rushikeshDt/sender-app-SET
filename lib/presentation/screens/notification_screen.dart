@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'package:intl/intl.dart';
 import 'package:sender_app/configs/device_info.dart';
+import 'package:sender_app/domain/debug_printer.dart';
 import 'package:sender_app/domain/local_firestore.dart';
 import 'package:sender_app/domain/set_auto_connect.dart';
 
@@ -44,7 +45,8 @@ class _NotificationPageState extends State<NotificationPage> {
             startTime: element.startTime,
             endTime: element.endTime,
             id: element.key,
-            type: element.type));
+            type: element.type,
+            services: element.services));
       });
 
       return notifications;
@@ -112,6 +114,7 @@ class _NotificationPageState extends State<NotificationPage> {
                       startTime: snapshot.data![index].startTime,
                       endTime: snapshot.data![index].endTime,
                       senderEmail: snapshot.data![index].senderEmail,
+                      services: snapshot.data![index].services,
                       context: context,
                     );
                   } else {
@@ -139,6 +142,7 @@ class NotificationCard extends StatelessWidget {
   final String startTime;
   final String endTime;
   final BuildContext context;
+  final List<String> services;
 
   const NotificationCard(
       {required this.senderEmail,
@@ -146,7 +150,8 @@ class NotificationCard extends StatelessWidget {
       required this.startTime,
       required this.id,
       required this.endTime,
-      required this.context});
+      required this.context,
+      required this.services});
 
   approveRequest() async {
     await FirestoreOps.respondNotification({
@@ -167,11 +172,14 @@ class NotificationCard extends StatelessWidget {
         endTime: newEndTime,
         startTime: newStartTime,
         receiverEmail: this.senderEmail,
-        services: ['LIVE_LOCATION']);
-
+        services: services);
+    DebugFile.saveTextData(
+        '[NotificationCard] Allowed for ${this.senderEmail} with \nstartTime: $startTime, \nendTime:$endTime, \nservices:$services');
+    print(
+        '[NotificationCard] Allowed for ${this.senderEmail} with \nstartTime: $startTime, \nendTime:$endTime, \nservices:$services');
     Toast(
       child: Text("allowed for user ${this.senderEmail}"),
-    );
+    ).show(context);
   }
 
   rejectRequest() async {
@@ -181,9 +189,10 @@ class NotificationCard extends StatelessWidget {
       "userResponse": "DENY",
       "requestNotificationId": id,
       "startTime": startTime,
-      "endTime": endTime
+      "endTime": endTime,
     });
-
+    DebugFile.saveTextData('[NotificationCard] denied for user ${senderEmail}');
+    print('[NotificationCard] denied for user ${senderEmail}');
     Toast(
       child: Text("Denied for user ${this.senderEmail}"),
     ).show(context);
@@ -204,6 +213,7 @@ class NotificationCard extends StatelessWidget {
             Text('message: $message'),
             Text('location start time: $startTime'),
             Text('location end time: $endTime'),
+            Text('services: $services'),
             SizedBox(height: 8.0),
             Row(
               children: <Widget>[
@@ -247,6 +257,7 @@ class NotificationItem {
   final String startTime;
   final String endTime;
   final String? type;
+  final List<String> services;
 
   NotificationItem(
       {required this.senderEmail,
@@ -254,7 +265,8 @@ class NotificationItem {
       required this.startTime,
       required this.endTime,
       required this.id,
-      required this.type});
+      required this.type,
+      required this.services});
 }
 
 //for each notification received from server( { id:{ details... }, id:...} )
@@ -265,6 +277,7 @@ class MyModel {
   final String endTime;
   final String senderEmail;
   final String type;
+  final List<String> services;
 
   MyModel(
       {required this.key,
@@ -272,22 +285,30 @@ class MyModel {
       required this.startTime,
       required this.endTime,
       required this.senderEmail,
-      required this.type});
+      required this.type,
+      required this.services});
 
   factory MyModel.fromJson(String key, Map<String, dynamic> map) {
-    return MyModel(
-      key: key,
-      message: map['message'] ?? '',
-      startTime: map['startTime'] ?? '',
-      senderEmail: map['senderEmail'] ?? '',
-      type: map['type'] ?? '',
-      endTime: map['endTime'] ?? '',
+    List<String> serv = [];
+    List<dynamic> list = map['services'];
+    list.forEach(
+      (element) {
+        serv.add(element);
+      },
     );
+    return MyModel(
+        key: key,
+        message: map['message'] ?? '',
+        startTime: map['startTime'] ?? '',
+        senderEmail: map['senderEmail'] ?? '',
+        type: map['type'] ?? '',
+        endTime: map['endTime'] ?? '',
+        services: serv);
   }
 
   @override
   String toString() {
-    return 'MyModel(key: $key, message: $message, ltime: $startTime $endTime, senderEmail: $senderEmail, req: $type)';
+    return 'MyModel(key: $key, message: $message, ltime: $startTime $endTime, senderEmail: $senderEmail, req: $type, services: $services)';
   }
 }
 

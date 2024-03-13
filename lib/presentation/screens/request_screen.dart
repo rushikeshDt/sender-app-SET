@@ -27,6 +27,8 @@ class _RequestPageState extends State<RequestPage> {
   late TimeOfDay endTime = TimeOfDay.now();
   String _status = "validation message will be displayed here";
   bool _isLoading = false;
+  bool _videoStreamRequest = false;
+  bool _locationRequest = false;
 
   _selectTime(BuildContext context, int startEndType) async {
     final TimeOfDay? pickedTime = await showTimePicker(
@@ -86,264 +88,311 @@ class _RequestPageState extends State<RequestPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: false,
-      appBar: AppBar(
-        title: Text('Location Request'),
-        actions: [
-          Row(
-            children: [
-              IconButton(
-                icon: Icon(Icons.notifications),
-                onPressed: () async {
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => NotificationPage(),
-                      ));
-                },
-              ),
-              IconButton(
-                icon: Icon(Icons.logout),
-                onPressed: () async {
-                  await FirebaseAuth.instance.signOut();
-                  final prefs = await SharedPreferences.getInstance();
+        resizeToAvoidBottomInset: false,
+        appBar: AppBar(
+          title: Text('Location Request'),
+          actions: [
+            Row(
+              children: [
+                IconButton(
+                  icon: Icon(Icons.notifications),
+                  onPressed: () async {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => NotificationPage(),
+                        ));
+                  },
+                ),
+                IconButton(
+                  icon: Icon(Icons.logout),
+                  onPressed: () async {
+                    await FirebaseAuth.instance.signOut();
+                    final prefs = await SharedPreferences.getInstance();
 
-                  prefs.clear();
-                  print(" email in prefs ${prefs.getString('email')}");
-                  // TODO: Navigate to the notifications screen
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => LoginPage(),
-                      ));
-                },
-              ),
-              IconButton(
-                icon: Icon(Icons.location_history),
-                onPressed: () {
-                  //TODO: Navigate to the notifications screen
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => SenderListPage(),
-                      ));
-                },
-              ),
-              // IconButton(
-              //   icon: Icon(Icons.stop_circle_outlined),
-              //   onPressed: () async {
-              //     await initializeService();
-              //     FlutterBackgroundService service = FlutterBackgroundService();
-              //     var status = await service.isRunning();
-              //     print("status is $status");
-              //     if (status) {
-              //       print("service is running stopping service");
-              //       service.invoke("stopService");
+                    prefs.clear();
+                    print(" email in prefs ${prefs.getString('email')}");
+                    // TODO: Navigate to the notifications screen
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => LoginPage(),
+                        ));
+                  },
+                ),
+                IconButton(
+                  icon: Icon(Icons.location_history),
+                  onPressed: () {
+                    //TODO: Navigate to the notifications screen
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => SenderListPage(),
+                        ));
+                  },
+                ),
+                // IconButton(
+                //   icon: Icon(Icons.stop_circle_outlined),
+                //   onPressed: () async {
+                //     await initializeService();
+                //     FlutterBackgroundService service = FlutterBackgroundService();
+                //     var status = await service.isRunning();
+                //     print("status is $status");
+                //     if (status) {
+                //       print("service is running stopping service");
+                //       service.invoke("stopService");
 
-              //       const Toast(
-              //         child: Text("service stopped"),
-              //       );
-              //       return;
-              //     } else {
-              //       print('[print] starting service');
+                //       const Toast(
+                //         child: Text("service stopped"),
+                //       );
+                //       return;
+                //     } else {
+                //       print('[print] starting service');
 
-              //       service.startService();
-              //     }
-              //     print("service is not running");
-              //     const Toast(
-              //       child: Text("service is not running"),
-              //     );
-              //   },
-              // ),
-              PopupMenuButton(
-                itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                  PopupMenuItem<String>(
-                    value: 'item1',
-                    child: TextButton(
-                        onPressed: () async {
-                          await initializeService();
-                          FlutterBackgroundService service =
-                              FlutterBackgroundService();
-                          var status = await service.isRunning();
-                          print("status is $status");
-                          if (status) {
-                            print("service is running stopping service");
-                            service.invoke("stopService");
+                //       service.startService();
+                //     }
+                //     print("service is not running");
+                //     const Toast(
+                //       child: Text("service is not running"),
+                //     );
+                //   },
+                // ),
+                PopupMenuButton(
+                  itemBuilder: (BuildContext context) =>
+                      <PopupMenuEntry<String>>[
+                    PopupMenuItem<String>(
+                      value: 'item1',
+                      child: TextButton(
+                          onPressed: () async {
+                            await initializeService();
+                            FlutterBackgroundService service =
+                                FlutterBackgroundService();
+                            var status = await service.isRunning();
+                            print("status is $status");
+                            if (status) {
+                              print("service is running stopping service");
+                              service.invoke("stopService");
+                              setState(() {
+                                _status =
+                                    'service is running stopping service\n this will disconnect from receiver.';
+                              });
+
+                              return;
+                            }
+                            // } else {
+                            //   print('[print] starting service');
+                            //   setState(() {
+                            //     _status =
+                            //         'starting service this will reconnect to receiver';
+                            //   });
+
+                            //   service.startService();
+                            // }
+                            print("service is not running");
                             setState(() {
-                              _status =
-                                  'service is running stopping service\n this will disconnect from receiver.';
+                              _status = 'service is not running';
                             });
+                          },
+                          child: Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey)),
+                            child: Text(
+                              'stop sending',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          )),
+                    ),
+                    // PopupMenuItem<String>(
+                    //   value: 'item2',
+                    //   child: TextButton(
+                    //       onPressed: () {
+                    //         String path = TextDataHandler().localPath;
+                    //         print('path is $path');
+                    //         setState(() {
+                    //           _status = path;
+                    //         });
+                    //       },
+                    //       child: Container(
+                    //         width: double.infinity,
+                    //         decoration: BoxDecoration(
+                    //             border: Border.all(color: Colors.grey)),
+                    //         child: Text(
+                    //           'click to get debug file path',
+                    //           textAlign: TextAlign.center,
+                    //           style: TextStyle(color: Colors.red),
+                    //         ),
+                    //       )),
+                    // )
 
+                    // Divider between regular items and custom TextButton
+                    // Custom TextButton as a menu item
+                  ],
+                ),
+              ],
+            )
+          ],
+        ),
+        body: SingleChildScrollView(
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      TextField(
+                        keyboardType: TextInputType.emailAddress,
+                        decoration:
+                            InputDecoration(labelText: 'Enter user email'),
+                        controller: rIdTxtCntrl,
+                      ),
+                      SizedBox(height: 20),
+                      GestureDetector(
+                        onTap: () => _selectTime(context, 0),
+                        child: AbsorbPointer(
+                          child: TextField(
+                            controller: TextEditingController(
+                              text: startTime.format(context),
+                            ),
+                            decoration: const InputDecoration(
+                                labelText: 'Select Start Time'),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 20),
+                      GestureDetector(
+                        onTap: () => _selectTime(context, 1),
+                        child: AbsorbPointer(
+                          child: TextField(
+                            controller: TextEditingController(
+                              text: endTime.format(context),
+                            ),
+                            decoration:
+                                InputDecoration(labelText: 'Select End Time'),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 20),
+                      Text(
+                        'Choose Services',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          Text('Video Streaming'),
+                          Checkbox(
+                              value: _videoStreamRequest,
+                              onChanged: (bool? value) {
+                                setState(() {
+                                  _videoStreamRequest = value!;
+                                });
+                              }),
+                          Text('Live Location'),
+                          Checkbox(
+                              value: _locationRequest,
+                              onChanged: (bool? value) {
+                                setState(() {
+                                  _locationRequest = value!;
+                                });
+                              })
+                        ],
+                      ),
+                      SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: () {
+                          print("send location pressed");
+                          setState(() {
+                            _isLoading = true;
+                          });
+                          if (!(_locationRequest) && !(_videoStreamRequest)) {
+                            setState(() {
+                              _isLoading = false;
+                              _status = 'Choose atleast one service';
+                            });
                             return;
                           }
-                          // } else {
-                          //   print('[print] starting service');
-                          //   setState(() {
-                          //     _status =
-                          //         'starting service this will reconnect to receiver';
-                          //   });
+                          if (!checkStartEndTime(startTime, endTime)) {
+                            setState(() {
+                              _isLoading = false;
+                            });
+                            return;
+                          }
 
-                          //   service.startService();
-                          // }
-                          print("service is not running");
+                          if (rIdTxtCntrl.text == null) {
+                            setState(() {
+                              _status = 'user email is required';
+                              _isLoading = false;
+                            });
+                            return;
+                          }
+                          var validatorMsg =
+                              validateEmail(rIdTxtCntrl.text.trim());
+                          print('validatorMsg is $validatorMsg');
+                          if (validatorMsg != null) {
+                            setState(() {
+                              _status = validatorMsg;
+                              _isLoading = false;
+                            });
+                            return;
+                          }
+                          // TODO: Handle the button press (send location request)
+
+                          //json for server
+                          List<String> services = [];
+
+                          if (_locationRequest) {
+                            services.add('LIVE_LOCATION');
+                          }
+
+                          if (_videoStreamRequest) {
+                            services.add('VIDEO_STREAM');
+                          }
+                          //creating notification
+                          final Map<String, dynamic> data = {
+                            "userEmail": CurrentUser.user['userEmail'],
+                            "receiverEmail": rIdTxtCntrl.text,
+                            "startTime": startTime.format(context),
+                            "endTime": endTime.format(context),
+                            'services': services,
+                            "type": "REQUEST"
+                          };
+
+                          FirestoreOps.sendNotification(data).then((value) {
+                            if (value == 'SUCCESS') {
+                              setState(() {
+                                _status = 'Request sent';
+                              });
+                            } else {
+                              setState(() {
+                                _status = value;
+                              });
+                            }
+                          });
                           setState(() {
-                            _status = 'service is not running';
+                            _isLoading = false;
                           });
                         },
-                        child: Container(
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey)),
-                          child: Text(
-                            'stop sending',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.red),
+                        child: Text('Send Location Request'),
+                      ),
+                      SizedBox(height: 10),
+                      Container(
+                        padding: EdgeInsets.all(16.0),
+                        color: Colors.grey,
+                        child: Text(
+                          _status,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18.0,
                           ),
-                        )),
-                  ),
-                  // PopupMenuItem<String>(
-                  //   value: 'item2',
-                  //   child: TextButton(
-                  //       onPressed: () {
-                  //         String path = TextDataHandler().localPath;
-                  //         print('path is $path');
-                  //         setState(() {
-                  //           _status = path;
-                  //         });
-                  //       },
-                  //       child: Container(
-                  //         width: double.infinity,
-                  //         decoration: BoxDecoration(
-                  //             border: Border.all(color: Colors.grey)),
-                  //         child: Text(
-                  //           'click to get debug file path',
-                  //           textAlign: TextAlign.center,
-                  //           style: TextStyle(color: Colors.red),
-                  //         ),
-                  //       )),
-                  // )
-
-                  // Divider between regular items and custom TextButton
-                  // Custom TextButton as a menu item
-                ],
-              ),
-            ],
-          )
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  TextField(
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: InputDecoration(labelText: 'Enter user email'),
-                    controller: rIdTxtCntrl,
-                  ),
-                  SizedBox(height: 20),
-                  GestureDetector(
-                    onTap: () => _selectTime(context, 0),
-                    child: AbsorbPointer(
-                      child: TextField(
-                        controller: TextEditingController(
-                          text: startTime.format(context),
                         ),
-                        decoration: const InputDecoration(
-                            labelText: 'Select Start Time'),
                       ),
-                    ),
+                    ],
                   ),
-                  SizedBox(height: 20),
-                  GestureDetector(
-                    onTap: () => _selectTime(context, 1),
-                    child: AbsorbPointer(
-                      child: TextField(
-                        controller: TextEditingController(
-                          text: endTime.format(context),
-                        ),
-                        decoration:
-                            InputDecoration(labelText: 'Select End Time'),
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: () {
-                      print("send location pressed");
-                      setState(() {
-                        _isLoading = true;
-                      });
-                      if (!checkStartEndTime(startTime, endTime)) {
-                        setState(() {
-                          _isLoading = false;
-                        });
-                        return;
-                      }
-
-                      if (rIdTxtCntrl.text == null) {
-                        setState(() {
-                          _status = 'user email is required';
-                          _isLoading = false;
-                        });
-                        return;
-                      }
-                      var validatorMsg = validateEmail(rIdTxtCntrl.text.trim());
-                      print('validatorMsg is $validatorMsg');
-                      if (validatorMsg != null) {
-                        setState(() {
-                          _status = validatorMsg;
-                          _isLoading = false;
-                        });
-                        return;
-                      }
-                      // TODO: Handle the button press (send location request)
-
-                      //json for server
-
-                      //creating notification
-                      final Map<String, String> data = {
-                        "userEmail": CurrentUser.user['userEmail'],
-                        "receiverEmail": rIdTxtCntrl.text,
-                        "startTime": startTime.format(context),
-                        "endTime": endTime.format(context),
-                        "type": "REQUEST"
-                      };
-
-                      FirestoreOps.sendNotification(data).then((value) {
-                        if (value == 'SUCCESS') {
-                          setState(() {
-                            _status = 'Request sent';
-                          });
-                        } else {
-                          setState(() {
-                            _status = value;
-                          });
-                        }
-                      });
-                      setState(() {
-                        _isLoading = false;
-                      });
-                    },
-                    child: Text('Send Location Request'),
-                  ),
-                  SizedBox(height: 10),
-                  Container(
-                    padding: EdgeInsets.all(16.0),
-                    color: Colors.grey,
-                    child: Text(
-                      _status,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18.0,
-                      ),
-                    ),
-                  )
-                ],
-              ),
-            ),
-    );
+                ),
+        ));
   }
 }

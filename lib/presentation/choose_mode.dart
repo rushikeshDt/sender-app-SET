@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
@@ -34,13 +35,10 @@ class ModePage extends StatelessWidget {
               child: Text('broadcast')),
           ElevatedButton(
               onPressed: () async {
-                var data =
-                    await FirestoreOps.getAvaialableSenders('receiverEmail');
-                print(data);
+                //  await FirestoreOps.getAvaialableSenders('receiverEmail');
 
-                Navigator.of(context).push(MaterialPageRoute(
-                    builder: (ctx) =>
-                        VideoStreamPage(roomId: data['userEmail']['roomId'])));
+                Navigator.of(context).push(
+                    MaterialPageRoute(builder: (ctx) => VideoStreamPage()));
               },
               child: Text('Stream'))
         ],

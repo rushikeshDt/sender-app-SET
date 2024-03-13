@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -21,13 +22,21 @@ class Signaling {
   static RTCPeerConnection? peerConnection;
   static MediaStream? localStream;
   static MediaStream? remoteStream;
-  static String? roomId;
-  static String? currentRoomText;
+  // static String? roomId;
+  // static String? currentRoomText;
   static StreamStateCallback? onAddRemoteStream;
 
-  static Future<String> createRoom({RTCVideoRenderer? remoteRenderer}) async {
+  static StreamController<RTCPeerConnectionState> myStreamController =
+      StreamController<RTCPeerConnectionState>();
+
+  static Future<void> createRoom(
+      {required String receiverEmail, required String senderEmail}) async {
     FirebaseFirestore db = FirebaseFirestore.instance;
-    DocumentReference roomRef = db.collection('rooms').doc();
+    DocumentReference roomRef = db
+        .collection('sessions')
+        .doc(receiverEmail)
+        .collection(senderEmail)
+        .doc('videoStream');
 
     print(
         '[Signaling.createRoom] Create PeerConnection with configuration: $configuration');
@@ -37,9 +46,10 @@ class Signaling {
     peerConnection = await createPeerConnection(configuration);
 
     registerPeerConnectionListeners(false);
-    if (localStream == null) {
-      await openUserMedia();
-    }
+    print('new code');
+
+    await openUserMedia();
+
     localStream?.getTracks().forEach((track) {
       peerConnection?.addTrack(track, localStream!);
     });
@@ -64,11 +74,10 @@ class Signaling {
     Map<String, dynamic> roomWithOffer = {'offer': offer.toMap()};
 
     await roomRef.set(roomWithOffer);
-    var roomId = roomRef.id;
-    print(
-        '[Signaling.createRoom] New room created with SDK offer. Room ID: $roomId');
+    // var roomId = roomRef.id;
+    print('[Signaling.createRoom] New room created with SDK offer.');
     DebugFile.saveTextData(
-        '[Signaling.createRoom] New room created with SDK offer. Room ID: $roomId');
+        '[Signaling.createRoom] New room created with SDK offer');
 
     // Created a Room
 
@@ -83,20 +92,24 @@ class Signaling {
 
     // Listening for remote session description below
     roomRef.snapshots().listen((snapshot) async {
-      print('Got updated room: ${snapshot.data()}');
+      print('[Signaling.createRoom] snapshot.exist ${snapshot.exists}');
+      if (snapshot.exists) {
+        print('Got updated room: ${snapshot.data()}');
 
-      Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
-      if (peerConnection?.getRemoteDescription() != null &&
-          data['answer'] != null) {
-        var answer = RTCSessionDescription(
-          data['answer']['sdp'],
-          data['answer']['type'],
-        );
+        Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
+        if (peerConnection?.getRemoteDescription() != null &&
+            data['answer'] != null) {
+          var answer = RTCSessionDescription(
+            data['answer']['sdp'],
+            data['answer']['type'],
+          );
 
-        print("[Signaling.createRoom] Someone tried to connect");
-        DebugFile.saveTextData(
-            "[Signaling.createRoom] Someone tried to connect");
-        await peerConnection?.setRemoteDescription(answer);
+          print("[Signaling.createRoom] Someone tried to connect");
+          DebugFile.saveTextData(
+              "[Signaling.createRoom] Someone tried to connect");
+          await peerConnection?.setRemoteDescription(answer);
+        }
+        return;
       }
     });
     // Listening for remote session description above
@@ -121,15 +134,17 @@ class Signaling {
       });
     });
     // Listen for remote ICE candidates above
-
-    return roomId;
   }
 
-  static Future<void> joinRoom(
-      {required String roomId, RTCVideoRenderer? remoteVideo}) async {
+  static Future<String> joinRoom(
+      {required String receiverEmail, required String senderEmail}) async {
+    //  print(roomId);
     FirebaseFirestore db = FirebaseFirestore.instance;
-    print(roomId);
-    DocumentReference roomRef = db.collection('rooms').doc('$roomId');
+    DocumentReference roomRef = db
+        .collection('sessions')
+        .doc(receiverEmail)
+        .collection(senderEmail)
+        .doc('videoStream');
     var roomSnapshot = await roomRef.get();
     print('Got room ${roomSnapshot.exists}');
 
@@ -212,7 +227,9 @@ class Signaling {
           );
         });
       });
+      return 'joined';
     }
+    return 'could not join. have you created connection ?';
   }
 
   static Future<void> openUserMedia(
@@ -224,16 +241,26 @@ class Signaling {
     }
 
     localStream = stream;
-    print('[Signaling.openMedia] geting localStream');
-    DebugFile.saveTextData('[Signaling.openMedia] geting localStream');
+    print('[Signaling.openMedia] got localStream');
+    DebugFile.saveTextData('[Signaling.openMedia] got localStream');
 
     // remoteVideo.srcObject = await createLocalMediaStream('key');
   }
 
   static Future<void> hangUp(
-      {RTCVideoRenderer? localVideo, required String roomId}) async {
-    print('[Signaling.hangup] hanging up for roomId $roomId');
-    DebugFile.saveTextData('[Signaling.hangup] hanging up for roomId $roomId');
+      {RTCVideoRenderer? localVideo,
+      required String receiverEmail,
+      required String senderEmail}) async {
+    print(
+        '[Signaling.hangup] hanging up for  receiver $receiverEmail sender $senderEmail');
+    DebugFile.saveTextData(
+        '[Signaling.hangup] hanging up for receiver $receiverEmail sender $senderEmail');
+    FirebaseFirestore db = FirebaseFirestore.instance;
+    DocumentReference roomRef = db
+        .collection('sessions')
+        .doc(receiverEmail)
+        .collection(senderEmail)
+        .doc('videoStream');
     try {
       if (localVideo != null) {
         List<MediaStreamTrack> tracks = localVideo.srcObject!.getTracks();
@@ -246,10 +273,9 @@ class Signaling {
         remoteStream!.getTracks().forEach((track) => track.stop());
       }
       if (peerConnection != null) peerConnection!.close();
+      DocumentSnapshot<Object?> roomSnapshot = await roomRef.get();
 
-      if (roomId != null) {
-        var db = FirebaseFirestore.instance;
-        var roomRef = db.collection('rooms').doc(roomId);
+      if (roomSnapshot.exists) {
         var calleeCandidates =
             await roomRef.collection('calleeCandidates').get();
         calleeCandidates.docs
@@ -277,6 +303,8 @@ class Signaling {
     };
 
     peerConnection?.onConnectionState = (RTCPeerConnectionState state) {
+      myStreamController.add(state);
+
       print('[Signaling] Connection state change: $state');
       DebugFile.saveTextData('[Signaling] Connection state change: $state');
     };
@@ -290,12 +318,20 @@ class Signaling {
       print('[Signaling] registering MediaStream to ui RTCVideoRenderer');
       DebugFile.saveTextData(
           '[Signaling] registering MediaStream to ui RTCVideoRenderer');
-      peerConnection?.onAddStream = (MediaStream stream) {
+      peerConnection!.onAddStream = (MediaStream stream) {
         print("[Signaling] Adding remote Stream.");
         DebugFile.saveTextData('[Signaling] Adding remote Stream.');
         onAddRemoteStream?.call(stream);
         remoteStream = stream;
       };
     }
+  }
+
+  static restartStream() {
+    myStreamController = StreamController<RTCPeerConnectionState>();
+  }
+
+  static dispose() async {
+    await myStreamController.close();
   }
 }

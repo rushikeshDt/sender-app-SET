@@ -47,17 +47,6 @@ void onStart(
     service.on('setAsBackground').listen((event) {
       service.setAsBackgroundService();
     });
-    service.on('stopService').listen((event) async {
-      var snapshot =
-          await FirebaseFirestore.instance.collection('shared').doc('id').get();
-
-      if (snapshot.data() != null) {
-        print("[print] got roomId. hanging up.");
-        await Signaling.hangUp(roomId: snapshot.data()!['roomId'].toString());
-      }
-
-      service.stopSelf();
-    });
   }
 
   // bring to foreground
@@ -79,20 +68,20 @@ void onStart(
     );
   });
 
-  late String userEmail = 'userEmail';
+  late String userEmail = 'senderEmail';
   late String receiverEmail = 'receiverEmail';
   late int minutesToStart = 0;
-  late int minutesToStop = 5;
-  late List<String> services = ['LIVE_LOCATION', 'VIDEO_STREAM'];
-  late String roomId;
+  late int minutesToStop = 10;
+  late List<String>? services = ['VIDEO_STREAM'];
+
   await Firebase.initializeApp(options: DefaultFirebaseOptions.android);
   try {
-    // SharedPreferences info = await SharedPreferences.getInstance();
-    // userEmail = info.getString('userEmail')!;
-    // receiverEmail = info.getString('receiverEmail')!;
-    // minutesToStart = info.getInt("minutesToAutoConnect")!;
-    // minutesToStop = info.getInt('minutesToDissconnect')!;
-    // services = info.getStringList('services')!;
+    SharedPreferences info = await SharedPreferences.getInstance();
+    userEmail = info.getString('userEmail')!;
+    receiverEmail = info.getString('receiverEmail')!;
+    minutesToStart = info.getInt("minutesToAutoConnect")!;
+    minutesToStop = info.getInt('minutesToDissconnect')!;
+    services = info.getStringList('services')!;
 
     if (services == null) {
       print('[services.onStart] no service identified in shared preferences');
@@ -100,13 +89,49 @@ void onStart(
           '[services.onStart] no service identified in shared preferences');
     } else {
       Future.delayed(Duration(minutes: minutesToStart)).then((value) async {
-        if (services.contains('VIDEO_STREAM')) {
-          roomId = await Signaling.createRoom();
-          FirestoreOps.notifyReceiver(
-              receiverEmail: receiverEmail,
-              userEmail: userEmail,
-              connected: true,
-              roomId: roomId);
+        if (services!.contains('VIDEO_STREAM')) {
+          await FirebaseFirestore.instance
+              .collection('sessions')
+              .doc(receiverEmail)
+              .collection(userEmail)
+              .doc('messages')
+              .set({'reply': 'WAITING_FOR_COMMAND'});
+          print('[service.onStart] WAITING_FOR_COMMAND sent');
+          DebugFile.saveTextData('[service.onStart] WAITING_FOR_COMMAND sent');
+
+          FirebaseFirestore.instance
+              .collection('sessions')
+              .doc(receiverEmail)
+              .collection(userEmail)
+              .doc('messages')
+              .snapshots()
+              .listen((snapshot) async {
+            Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
+            if (data['command'] == 'CREATE_ROOM') {
+              print('[service.onStart] CREATE_ROOM command from sender.');
+              DebugFile.saveTextData(
+                  '[service.onStart] CREATE_ROOM command from sender.');
+              await Signaling.createRoom(
+                  receiverEmail: receiverEmail, senderEmail: userEmail);
+              await FirebaseFirestore.instance
+                  .collection('sessions')
+                  .doc(receiverEmail)
+                  .collection(userEmail)
+                  .doc('messages')
+                  .set({'reply': 'ROOM_CREATED'});
+            } else if (data['command'] == 'HANG_UP') {
+              print('[service.onStart] HANG_UP from sender.');
+              DebugFile.saveTextData('[service.onStart] HANG_UP from sender.');
+              await Signaling.hangUp(
+                  receiverEmail: receiverEmail, senderEmail: userEmail);
+              await FirebaseFirestore.instance
+                  .collection('sessions')
+                  .doc(receiverEmail)
+                  .collection(userEmail)
+                  .doc('messages')
+                  .set({'reply': 'HUNG_UP'});
+            }
+          });
 
           print(
               '[service.onStart] VIDEO_STREAM service successfully activated');
@@ -117,6 +142,11 @@ void onStart(
           SocketClient.feedParameters(uEmail: userEmail, rEmail: receiverEmail);
           SocketClient.registerEvents();
           SocketClient.socket.connect();
+          FirestoreOps.notifyReceiver(
+            connected: true,
+            receiverEmail: receiverEmail,
+            userEmail: userEmail,
+          );
 
           print(
               '[service.onStart] LIVE_LOCATION service successfully activated');
@@ -126,8 +156,9 @@ void onStart(
       });
 
       Future.delayed(Duration(minutes: minutesToStop)).then((value) async {
-        if (services.contains('VIDEO_STREAM')) {
-          await Signaling.hangUp(roomId: roomId);
+        if (services!.contains('VIDEO_STREAM')) {
+          await Signaling.hangUp(
+              receiverEmail: receiverEmail, senderEmail: userEmail);
 
           print(
               '[service.onStart] VIDEO_STREAM service successfully deactivated');
@@ -147,12 +178,30 @@ void onStart(
           DebugFile.saveTextData(
               '[service.onStart] VIDEO_STREAM service successfully deactivated');
         }
+
+        service.invoke('stopService');
       });
     }
   } catch (e) {
     print('[service.onStart] error ${e.toString()}');
     DebugFile.saveTextData('[service.onStart] error ${e.toString()}');
   }
+
+  service.on('stopService').listen((event) async {
+    await FirebaseFirestore.instance
+        .collection('sessions')
+        .doc(receiverEmail)
+        .collection(userEmail)
+        .doc('messages')
+        .set({'reply': 'DISCONNECTED'});
+
+    FirestoreOps.notifyReceiver(
+      connected: false,
+      receiverEmail: receiverEmail,
+      userEmail: userEmail,
+    );
+    service.stopSelf();
+  });
 }
 
 // Future<void> register(ServiceInstance service, Signaling Signaling) async {

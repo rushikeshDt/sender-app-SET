@@ -10,12 +10,12 @@ import 'package:sender_app/domain/debug_printer.dart';
 import 'package:sender_app/utils/upload_file_to_cloud.dart';
 
 class VideoStreamPage extends StatefulWidget {
-  String roomId;
-  VideoStreamPage({Key? key, required this.roomId}) : super(key: key);
+  VideoStreamPage({
+    Key? key,
+  }) : super(key: key);
 
   @override
-  _VideoStreamPagePageState createState() =>
-      _VideoStreamPagePageState(roomId: roomId);
+  _VideoStreamPagePageState createState() => _VideoStreamPagePageState();
 }
 
 class _VideoStreamPagePageState extends State<VideoStreamPage> {
@@ -24,10 +24,12 @@ class _VideoStreamPagePageState extends State<VideoStreamPage> {
 
   TextEditingController textEditingController = TextEditingController(text: '');
   String? status;
-  late String roomId;
-  _VideoStreamPagePageState({required this.roomId});
+  String? rtcConnectionStatus;
+
+  _VideoStreamPagePageState();
   @override
   void initState() {
+    Signaling.restartStream();
     _localRenderer.initialize();
     _remoteRenderer.initialize();
 
@@ -36,12 +38,14 @@ class _VideoStreamPagePageState extends State<VideoStreamPage> {
       _remoteRenderer.srcObject = stream;
       setState(() {});
     });
+    updateStatus();
 
     super.initState();
   }
 
   @override
   void dispose() {
+    Signaling.dispose();
     _localRenderer.dispose();
     _remoteRenderer.dispose();
     super.dispose();
@@ -62,20 +66,45 @@ class _VideoStreamPagePageState extends State<VideoStreamPage> {
                 },
                 icon: Icon(Icons.restart_alt)),
             ElevatedButton(
-              onPressed: () async {
-                setState(() {
-                  status = roomId;
-                });
+                onPressed: () async {
+                  try {
+                    await FirebaseFirestore.instance
+                        .collection('sessions')
+                        .doc('receiverEmail')
+                        .collection('senderEmail')
+                        .doc('messages')
+                        .set({'command': 'CREATE_ROOM'});
+                    print('[VideoStreamPage] command sent');
 
+                    setState(() {
+                      status = 'REQUEST_SENT';
+                    });
+                  } catch (e) {
+                    print(
+                        '[VideoStreamPage] error sending command ${e.toString()}');
+                  }
+                },
+                child: Text('create')),
+            ElevatedButton(
+              onPressed: () async {
                 //connect to sender
-                Signaling.joinRoom(
-                  roomId: roomId,
-                );
-                setState(() {
-                  status = 'room joined';
-                });
+                await Signaling.joinRoom(
+                    receiverEmail: 'receiverEmail', senderEmail: 'senderEmail');
+                DocumentSnapshot<Map<String, dynamic>> snapshot =
+                    await FirebaseFirestore.instance
+                        .collection('sessions')
+                        .doc('receiverEmail')
+                        .collection('senderEmail')
+                        .doc('messages')
+                        .get();
+
+                if (snapshot.data()!['reply'] == 'ROOM_CREATED') {
+                  setState(() {
+                    status = 'SENDER_READY';
+                  });
+                }
               },
-              child: Text("Join room"),
+              child: Text("Join"),
             ),
             SizedBox(
               width: 8,
@@ -83,13 +112,31 @@ class _VideoStreamPagePageState extends State<VideoStreamPage> {
             ElevatedButton(
               onPressed: () async {
                 if (Signaling.peerConnection != null) {
-                  Signaling.peerConnection!.close();
+                  await FirebaseFirestore.instance
+                      .collection('sessions')
+                      .doc('receiverEmail')
+                      .collection('senderEmail')
+                      .doc('messages')
+                      .set({'command': 'HANG_UP'});
                   setState(() {
-                    status = 'hung up';
+                    status = 'HANG_UP sent to sender';
                   });
+                  DocumentSnapshot<Map<String, dynamic>> snapshot =
+                      await FirebaseFirestore.instance
+                          .collection('sessions')
+                          .doc('receiverEmail')
+                          .collection('senderEmail')
+                          .doc('messages')
+                          .get();
+
+                  if (snapshot.data()!['reply'] == 'HUNG_UP') {
+                    setState(() {
+                      status = 'HUNG_UP';
+                    });
+                  }
                 } else {
                   setState(() {
-                    status = 'not connected';
+                    status = 'NOT_CONNECTED';
                   });
                 }
               },
@@ -113,12 +160,64 @@ class _VideoStreamPagePageState extends State<VideoStreamPage> {
                   ),
                   SizedBox(height: 8),
                   Positioned(
+                    width: DeviceInfo.getDeviceWidth(context),
                     top: 10,
                     left: 10,
-                    child: Text('status ${status ?? 'empty'}'),
+                    child: Text(
+                      softWrap: true,
+                      'SESSION: ${status ?? ''}',
+                      style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  Positioned(
+                    width: DeviceInfo.getDeviceWidth(context),
+                    top: 50,
+                    left: 10,
+                    child: Text(
+                      softWrap: true,
+                      'RTC_CONNECTION: ${rtcConnectionStatus ?? ''}',
+                      style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ],
               ),
             )));
+  }
+
+  updateStatus() {
+    Signaling.myStreamController.stream.listen((event) {
+      late String msg;
+      switch (event) {
+        case RTCPeerConnectionState.RTCPeerConnectionStateConnecting:
+          msg = 'CONNECTING';
+          break;
+        case RTCPeerConnectionState.RTCPeerConnectionStateConnected:
+          msg = 'CONNECTED';
+          break;
+        case RTCPeerConnectionState.RTCPeerConnectionStateFailed:
+          msg = 'HUNG UP';
+          break;
+        case RTCPeerConnectionState.RTCPeerConnectionStateDisconnected:
+          msg = 'DISCONNECTED';
+          break;
+        case RTCPeerConnectionState.RTCPeerConnectionStateClosed:
+          msg = 'CLOSED';
+
+          break;
+        case RTCPeerConnectionState.RTCPeerConnectionStateNew:
+          msg = 'NEW_CONNECTION';
+          break;
+        default:
+      }
+      setState(() {
+        rtcConnectionStatus = msg;
+      });
+    });
   }
 }

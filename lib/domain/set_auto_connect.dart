@@ -53,16 +53,8 @@ setAutoConnect(
         "[setAutoConnect] successfully stored values in sharedpreferences");
   });
 
-  // switch (services) {
-  //   case 'VIDEO_STREAM':
-  //     initializeService();
-  //     break;
-  //   case 'LIVE_LOCATION':
-  //     initializeService();
-  //     break;
-  //   default:
-  // }
-
   final service = FlutterBackgroundService();
+  initializeService();
+
   service.startService();
 }
