@@ -74,8 +74,8 @@ void onStart(
   late int minutesToStop = 10;
   late List<String>? services = ['VIDEO_STREAM'];
 
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.android);
   try {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.android);
     SharedPreferences info = await SharedPreferences.getInstance();
     userEmail = info.getString('userEmail')!;
     receiverEmail = info.getString('receiverEmail')!;
@@ -83,111 +83,110 @@ void onStart(
     minutesToStop = info.getInt('minutesToDissconnect')!;
     services = info.getStringList('services')!;
 
-    if (services == null) {
-      print('[services.onStart] no service identified in shared preferences');
-      DebugFile.saveTextData(
-          '[services.onStart] no service identified in shared preferences');
-    } else {
-      Future.delayed(Duration(minutes: minutesToStart)).then((value) async {
-        if (services!.contains('VIDEO_STREAM')) {
-          await FirebaseFirestore.instance
-              .collection('sessions')
-              .doc(receiverEmail)
-              .collection(userEmail)
-              .doc('messages')
-              .set({'reply': 'WAITING_FOR_COMMAND'});
-          print('[service.onStart] WAITING_FOR_COMMAND sent');
-          DebugFile.saveTextData('[service.onStart] WAITING_FOR_COMMAND sent');
+    print(
+        '[service.onStart] got userEmail: $userEmail, receiverEmail:$receiverEmail, minutesToStart:$minutesToStart, minutesToStop:$minutesToStop, services:$services');
+    DebugFile.saveTextData(
+        '[service.onStart] got userEmail: $userEmail, receiverEmail:$receiverEmail, minutesToStart:$minutesToStart, minutesToStop:$minutesToStop, services:$services');
+    Future.delayed(Duration(minutes: minutesToStart)).then((value) async {
+      if (services!.contains('VIDEO_STREAM')) {
+        await FirebaseFirestore.instance
+            .collection('sessions')
+            .doc(receiverEmail)
+            .collection(userEmail)
+            .doc('messages')
+            .set({'reply': 'WAITING_FOR_COMMAND'});
+        print('[service.onStart] WAITING_FOR_COMMAND sent');
+        DebugFile.saveTextData('[service.onStart] WAITING_FOR_COMMAND sent');
 
-          FirebaseFirestore.instance
-              .collection('sessions')
-              .doc(receiverEmail)
-              .collection(userEmail)
-              .doc('messages')
-              .snapshots()
-              .listen((snapshot) async {
-            Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
-            if (data['command'] == 'CREATE_ROOM') {
-              print('[service.onStart] CREATE_ROOM command from sender.');
-              DebugFile.saveTextData(
-                  '[service.onStart] CREATE_ROOM command from sender.');
-              await Signaling.createRoom(
-                  receiverEmail: receiverEmail, senderEmail: userEmail);
-              await FirebaseFirestore.instance
-                  .collection('sessions')
-                  .doc(receiverEmail)
-                  .collection(userEmail)
-                  .doc('messages')
-                  .set({'reply': 'ROOM_CREATED'});
-            } else if (data['command'] == 'HANG_UP') {
-              print('[service.onStart] HANG_UP from sender.');
-              DebugFile.saveTextData('[service.onStart] HANG_UP from sender.');
-              await Signaling.hangUp(
-                  receiverEmail: receiverEmail, senderEmail: userEmail);
-              await FirebaseFirestore.instance
-                  .collection('sessions')
-                  .doc(receiverEmail)
-                  .collection(userEmail)
-                  .doc('messages')
-                  .set({'reply': 'HUNG_UP'});
-            }
-          });
-
-          print(
-              '[service.onStart] VIDEO_STREAM service successfully activated');
-          DebugFile.saveTextData(
-              '[service.onStart] VIDEO_STREAM service successfully activated');
-        }
-        if (services.contains('LIVE_LOCATION')) {
-          SocketClient.feedParameters(uEmail: userEmail, rEmail: receiverEmail);
-          SocketClient.registerEvents();
-          SocketClient.socket.connect();
-          FirestoreOps.notifyReceiver(
-            connected: true,
-            receiverEmail: receiverEmail,
-            userEmail: userEmail,
-          );
-
-          print(
-              '[service.onStart] LIVE_LOCATION service successfully activated');
-          DebugFile.saveTextData(
-              '[service.onStart] LIVE_LOCATION service successfully activated');
-        }
-      });
-
-      Future.delayed(Duration(minutes: minutesToStop)).then((value) async {
-        if (services!.contains('VIDEO_STREAM')) {
-          await Signaling.hangUp(
-              receiverEmail: receiverEmail, senderEmail: userEmail);
-
-          print(
-              '[service.onStart] VIDEO_STREAM service successfully deactivated');
-          DebugFile.saveTextData(
-              '[service.onStart] VIDEO_STREAM service successfully deactivated');
-        }
-        if (services.contains('LIVE_LOCATION')) {
-          if (SocketClient.socket.connected) {
-            SocketClient.socket.disconnect();
-            print('[service.onStart] socket is connected disconnecting now');
+        FirebaseFirestore.instance
+            .collection('sessions')
+            .doc(receiverEmail)
+            .collection(userEmail)
+            .doc('messages')
+            .snapshots()
+            .listen((snapshot) async {
+          Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
+          if (data['command'] == 'CREATE_ROOM') {
+            print('[service.onStart] CREATE_ROOM command from sender.');
             DebugFile.saveTextData(
-                '[service.onStart] socket is connected disconnecting now');
+                '[service.onStart] CREATE_ROOM command from sender.');
+            await Signaling.createRoom(
+                receiverEmail: receiverEmail, senderEmail: userEmail);
+            await FirebaseFirestore.instance
+                .collection('sessions')
+                .doc(receiverEmail)
+                .collection(userEmail)
+                .doc('messages')
+                .set({'reply': 'ROOM_CREATED'});
+          } else if (data['command'] == 'HANG_UP') {
+            print('[service.onStart] HANG_UP from sender.');
+            DebugFile.saveTextData('[service.onStart] HANG_UP from sender.');
+            await Signaling.hangUp(
+                receiverEmail: receiverEmail, senderEmail: userEmail);
+            await FirebaseFirestore.instance
+                .collection('sessions')
+                .doc(receiverEmail)
+                .collection(userEmail)
+                .doc('messages')
+                .set({'reply': 'HUNG_UP'});
           }
+        });
 
-          print(
-              '[service.onStart] VIDEO_STREAM service successfully deactivated');
+        print('[service.onStart] VIDEO_STREAM service successfully activated');
+        DebugFile.saveTextData(
+            '[service.onStart] VIDEO_STREAM service successfully activated');
+      }
+      if (services.contains('LIVE_LOCATION')) {
+        SocketClient.feedParameters(uEmail: userEmail, rEmail: receiverEmail);
+        SocketClient.registerEvents();
+        SocketClient.socket.connect();
+        FirestoreOps.notifyReceiver(
+          connected: true,
+          receiverEmail: receiverEmail,
+          userEmail: userEmail,
+        );
+
+        print('[service.onStart] LIVE_LOCATION service successfully activated');
+        DebugFile.saveTextData(
+            '[service.onStart] LIVE_LOCATION service successfully activated');
+      }
+    });
+
+    Future.delayed(Duration(minutes: minutesToStop)).then((value) async {
+      if (services!.contains('VIDEO_STREAM')) {
+        await Signaling.hangUp(
+            receiverEmail: receiverEmail, senderEmail: userEmail);
+
+        print(
+            '[service.onStart] VIDEO_STREAM service successfully deactivated');
+        DebugFile.saveTextData(
+            '[service.onStart] VIDEO_STREAM service successfully deactivated');
+      }
+      if (services.contains('LIVE_LOCATION')) {
+        if (SocketClient.socket.connected) {
+          SocketClient.socket.disconnect();
+          print('[service.onStart] socket is connected disconnecting now');
           DebugFile.saveTextData(
-              '[service.onStart] VIDEO_STREAM service successfully deactivated');
+              '[service.onStart] socket is connected disconnecting now');
         }
 
-        service.invoke('stopService');
-      });
-    }
+        print(
+            '[service.onStart] VIDEO_STREAM service successfully deactivated');
+        DebugFile.saveTextData(
+            '[service.onStart] VIDEO_STREAM service successfully deactivated');
+      }
+
+      service.invoke('stopService');
+    });
   } catch (e) {
     print('[service.onStart] error ${e.toString()}');
     DebugFile.saveTextData('[service.onStart] error ${e.toString()}');
   }
 
   service.on('stopService').listen((event) async {
+    print('[service.onStart] stopService event. stopping service.');
+    DebugFile.saveTextData(
+        '[service.onStart] stopService event. stopping service.');
     await FirebaseFirestore.instance
         .collection('sessions')
         .doc(receiverEmail)
@@ -200,7 +199,7 @@ void onStart(
       receiverEmail: receiverEmail,
       userEmail: userEmail,
     );
-    service.stopSelf();
+    await service.stopSelf();
   });
 }
 

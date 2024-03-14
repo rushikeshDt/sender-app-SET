@@ -17,7 +17,6 @@ class _SenderListPageState extends State<SenderListPage> {
   @override
   void initState() {
     super.initState();
-    fetchSenderList();
   }
 
   Future<List<SenderModel>?> fetchSenderList() async {
@@ -142,7 +141,10 @@ class SenderCard extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => ModePage(),
+                          builder: (context) => ServicePage(
+                            senderEmail: senderEmail,
+                            services: services,
+                          ),
                         ),
                       );
                     },
@@ -178,12 +180,19 @@ class SenderModel {
       required this.services});
 
   factory SenderModel.fromMap(String key, Map<String, dynamic> value) {
+    List<String> serv = [];
+    List<dynamic> list = value['services'];
+    list.forEach(
+      (element) {
+        serv.add(element);
+      },
+    );
     return SenderModel(
         sender: key,
         sTime: value['startTime'], // Assuming 'sTime' is a Firestore Timestamp
         eTime: value['endTime'],
         connected: value['connected'],
-        services: value['services']);
+        services: serv);
   }
 
   // Map<String, dynamic> toMap() {

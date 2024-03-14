@@ -160,7 +160,8 @@ class NotificationCard extends StatelessWidget {
       "userResponse": "APPROVE",
       "requestNotificationId": id,
       "startTime": startTime,
-      "endTime": endTime
+      "endTime": endTime,
+      "services": services
     });
     DateTime sdt = DateFormat("h:mm a").parse(startTime);
     DateTime edt = DateFormat("h:mm a").parse(endTime);

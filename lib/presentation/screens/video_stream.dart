@@ -7,15 +7,16 @@ import 'package:sender_app/configs/device_info.dart';
 import 'package:sender_app/domain/services/fl_background_service.dart';
 import 'package:sender_app/domain/signaling.dart';
 import 'package:sender_app/domain/debug_printer.dart';
+import 'package:sender_app/user/user_info.dart';
 import 'package:sender_app/utils/upload_file_to_cloud.dart';
 
 class VideoStreamPage extends StatefulWidget {
-  VideoStreamPage({
-    Key? key,
-  }) : super(key: key);
+  late String senderEmail;
+  VideoStreamPage({Key? key, required this.senderEmail}) : super(key: key);
 
   @override
-  _VideoStreamPagePageState createState() => _VideoStreamPagePageState();
+  _VideoStreamPagePageState createState() =>
+      _VideoStreamPagePageState(senderEmail: senderEmail);
 }
 
 class _VideoStreamPagePageState extends State<VideoStreamPage> {
@@ -25,10 +26,13 @@ class _VideoStreamPagePageState extends State<VideoStreamPage> {
   TextEditingController textEditingController = TextEditingController(text: '');
   String? status;
   String? rtcConnectionStatus;
+  late String userEmail;
+  late String senderEmail;
 
-  _VideoStreamPagePageState();
+  _VideoStreamPagePageState({required this.senderEmail});
   @override
   void initState() {
+    userEmail = CurrentUser.user['userEmail'];
     Signaling.restartStream();
     _localRenderer.initialize();
     _remoteRenderer.initialize();
@@ -39,12 +43,40 @@ class _VideoStreamPagePageState extends State<VideoStreamPage> {
       setState(() {});
     });
     updateStatus();
+    FirebaseFirestore.instance
+        .collection('sessions')
+        .doc(userEmail)
+        .collection(senderEmail)
+        .doc('messages')
+        .snapshots()
+        .listen((snapshot) {
+      print(
+          '[VideoStream] obtained messages document snapshot ${snapshot.data()}');
+      DebugFile.saveTextData(
+          '[VideoStream] obtained messages document snapshot ${snapshot.data()}');
+      var reply = snapshot.data()!['reply'];
+      if (reply != null) {
+        setState(() {
+          status = reply;
+        });
+      }
+    });
 
     super.initState();
   }
 
   @override
   void dispose() {
+    FirebaseFirestore.instance
+        .collection('sessions')
+        .doc(userEmail)
+        .collection(senderEmail)
+        .doc('messages')
+        .set({'command': 'HANG_UP'});
+    setState(() {
+      status = 'HANG_UP sent to sender';
+    });
+
     Signaling.dispose();
     _localRenderer.dispose();
     _remoteRenderer.dispose();
@@ -70,8 +102,8 @@ class _VideoStreamPagePageState extends State<VideoStreamPage> {
                   try {
                     await FirebaseFirestore.instance
                         .collection('sessions')
-                        .doc('receiverEmail')
-                        .collection('senderEmail')
+                        .doc(userEmail)
+                        .collection(senderEmail)
                         .doc('messages')
                         .set({'command': 'CREATE_ROOM'});
                     print('[VideoStreamPage] command sent');
@@ -89,20 +121,7 @@ class _VideoStreamPagePageState extends State<VideoStreamPage> {
               onPressed: () async {
                 //connect to sender
                 await Signaling.joinRoom(
-                    receiverEmail: 'receiverEmail', senderEmail: 'senderEmail');
-                DocumentSnapshot<Map<String, dynamic>> snapshot =
-                    await FirebaseFirestore.instance
-                        .collection('sessions')
-                        .doc('receiverEmail')
-                        .collection('senderEmail')
-                        .doc('messages')
-                        .get();
-
-                if (snapshot.data()!['reply'] == 'ROOM_CREATED') {
-                  setState(() {
-                    status = 'SENDER_READY';
-                  });
-                }
+                    receiverEmail: userEmail, senderEmail: 'senderEmail');
               },
               child: Text("Join"),
             ),
@@ -114,26 +133,13 @@ class _VideoStreamPagePageState extends State<VideoStreamPage> {
                 if (Signaling.peerConnection != null) {
                   await FirebaseFirestore.instance
                       .collection('sessions')
-                      .doc('receiverEmail')
-                      .collection('senderEmail')
+                      .doc(userEmail)
+                      .collection(senderEmail)
                       .doc('messages')
                       .set({'command': 'HANG_UP'});
                   setState(() {
                     status = 'HANG_UP sent to sender';
                   });
-                  DocumentSnapshot<Map<String, dynamic>> snapshot =
-                      await FirebaseFirestore.instance
-                          .collection('sessions')
-                          .doc('receiverEmail')
-                          .collection('senderEmail')
-                          .doc('messages')
-                          .get();
-
-                  if (snapshot.data()!['reply'] == 'HUNG_UP') {
-                    setState(() {
-                      status = 'HUNG_UP';
-                    });
-                  }
                 } else {
                   setState(() {
                     status = 'NOT_CONNECTED';

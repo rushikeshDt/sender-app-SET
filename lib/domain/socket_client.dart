@@ -1,4 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:sender_app/domain/debug_printer.dart';
 import 'package:socket_io_client/socket_io_client.dart';
 
 class SocketClient {
@@ -48,34 +51,4 @@ class SocketClient {
       });
     });
   }
-}
-
-connectToSocketServer() {
-  // notifyReceiver(bool connected) async {
-  //   print("[print] notifyReceiver called");
-  //   print("[print] updating document");
-  //   await Firebase.initializeApp(options: DefaultFirebaseOptions.android);
-  //   CollectionReference collectionReference =
-  //       FirebaseFirestore.instance.collection('availableSenders');
-  //   DocumentReference documentReference =
-  //       collectionReference.doc(receiverEmail);
-  //   documentReference.set({
-  //     userEmail: {
-  //       'connected': connected,
-  //     }
-  //   }, SetOptions(merge: true));
-
-  //print("[print] document updated");}
-
-  // Future.delayed(Duration(seconds: minutesToStart * 60 - 30))
-  //     .then((value) async {
-  //   await notifyReceiver(true);
-  //   socket.connect();
-  // });
-
-  // Future.delayed(Duration(seconds: minutesToStop * 60)).then((value) async {
-  //   await notifyReceiver(false);
-  //   socket.disconnect();
-  //   service.stopSelf();
-  // });
 }
