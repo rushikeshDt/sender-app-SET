@@ -8,7 +8,7 @@ import 'package:sender_app/presentation/screens/reset_password.dart';
 import 'package:sender_app/presentation/screens/sign_up.dart';
 import 'package:sender_app/presentation/screens/verify_email.dart';
 import 'package:sender_app/user/user_info.dart';
-import 'package:sender_app/utils/validate%20email.dart';
+import 'package:sender_app/utils/validate%20password.dart';
 
 import 'package:sender_app/utils/validate_email.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -37,9 +37,6 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    print("building _isLoading is $_isLoading");
-    DebugFile.saveTextData("[LogInPage] Building _isLoading is $_isLoading");
-
     return Scaffold(
       resizeToAvoidBottomInset: false,
       body: _isLoading
@@ -164,6 +161,7 @@ class _LoginPageState extends State<LoginPage> {
       if (!(credential.user!.emailVerified)) {
         Navigator.push(
             context, MaterialPageRoute(builder: (ctx) => VerifyEmail()));
+        print('[logInPage] email unverified. ${user.email}');
         DebugFile.saveTextData('[logInPage] email unverified. ${user.email}');
         return "email unverified. verify email before login. Check your emails for verification email.";
       }
@@ -172,21 +170,10 @@ class _LoginPageState extends State<LoginPage> {
       await prefs.setString('password', password);
       await CurrentUser.fetchUser(user.uid);
       return 'SUCCESS';
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'user-not-found') {
-        print('No user found for that email.');
-
-        // const Toast(
-        //   child: Text('No user found for that email.'),
-        // ).show(context);
-      } else if (e.code == 'wrong-password') {
-        print('Wrong password provided for that user.');
-        // const Toast(
-        //   child: Text('Wrong password provided for that user.'),
-        // ).show(context);
-      }
-      DebugFile.saveTextData("[LogInPage] ${e.code}");
-      return e.code;
+    } catch (e) {
+      print("[LogInPage] error ${e.toString()}");
+      DebugFile.saveTextData("[LogInPage] error ${e.toString()}");
+      return e.toString();
     }
   }
 
@@ -202,8 +189,6 @@ class _LoginPageState extends State<LoginPage> {
       final value = await _logInUser(email.trim(), password.trim());
 
       if (value == 'SUCCESS') {
-        print('pushing RequestPage');
-
         Navigator.pushAndRemoveUntil(context,
             MaterialPageRoute(builder: (context) {
           return RequestPage();

@@ -6,7 +6,7 @@ import 'package:sender_app/domain/debug_printer.dart';
 import 'package:sender_app/presentation/screens/login.dart';
 import 'package:sender_app/presentation/screens/request_screen.dart';
 import 'package:sender_app/user/user_info.dart' as CurrentUser;
-import 'package:sender_app/utils/validate%20email.dart';
+import 'package:sender_app/utils/validate%20password.dart';
 import 'package:sender_app/utils/validate_email.dart';
 import 'package:sender_app/utils/validate_phone.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -77,14 +77,10 @@ class _SignUpPageState extends State<SignUpPage> {
                   SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: () async {
-                      print(_emailTextController.text);
-                      DebugFile.saveTextData('''[SignUpPage]
-                      email: ${_emailTextController.text.trim()},
-                      password: ${_passwordTextController.text.trim()},
-                      phone: ${_phoneTextController.text.trim()}
-                      ''');
-
-                      print(_passwordTextController.text);
+                      print(
+                          '[SignUpPage] email: ${_emailTextController.text.trim()},password: ${_passwordTextController.text.trim()},  phone: ${_phoneTextController.text.trim()} ');
+                      DebugFile.saveTextData(
+                          '[SignUpPage] email: ${_emailTextController.text.trim()},password: ${_passwordTextController.text.trim()},  phone: ${_phoneTextController.text.trim()} ');
 
                       if (_formKey.currentState!.validate()) {
                         _SignUpUser(
@@ -142,6 +138,8 @@ class _SignUpPageState extends State<SignUpPage> {
 
   Future<bool> _SignUpUser(String email, String password, String username,
       String phone, BuildContext context) async {
+    print('[SignUpPage] Signing up user.');
+    DebugFile.saveTextData('[SignUpPage] Signing up user.');
     try {
       final credential =
           await FirebaseAuth.instance.createUserWithEmailAndPassword(
@@ -153,7 +151,8 @@ class _SignUpPageState extends State<SignUpPage> {
       user.sendEmailVerification();
 
       final uniqueUserId = user.uid;
-      print(uniqueUserId);
+      print("[SignUpPage] Unique userid $uniqueUserId");
+      DebugFile.saveTextData("[SignUpPage] Unique userid $uniqueUserId");
 
       final CollectionReference UsersCollection =
           FirebaseFirestore.instance.collection('users');

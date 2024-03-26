@@ -1,10 +1,12 @@
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:sender_app/user/user_info.dart';
 
 Future<void> uploadTextFile(File file) async {
+  String currentUser = CurrentUser.user['userEmail'];
   try {
     String fileName =
-        'current_user_debug_info.txt'; // Change this to your desired file name
+        '${currentUser}_debug_info.txt'; // Change this to your desired file name
     Reference storageReference = FirebaseStorage.instance.ref().child(fileName);
 
     // Upload the file to Firebase Cloud Storage

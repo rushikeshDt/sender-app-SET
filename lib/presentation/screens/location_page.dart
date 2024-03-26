@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:sender_app/domain/fetch_location.dart';
 import 'package:sender_app/network/send_request.dart';
 import 'package:sender_app/user/user_info.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -18,23 +19,28 @@ class LocationPage extends StatefulWidget {
 }
 
 class _LocationPageState extends State<LocationPage> {
+  late FetchLocation _fetchLocation;
   final String senderEmail;
-  RequestWebSocket rws = RequestWebSocket();
+//  RequestWebSocket rws = RequestWebSocket();
 
   _LocationPageState({required this.senderEmail});
 
   @override
   void initState() {
+    _fetchLocation = FetchLocation.getInstance(senderEmail: senderEmail);
+    _fetchLocation.openLocationStream();
+    _fetchLocation.sendLocationRequest();
     // TODO: implement initState
     super.initState();
   }
 
   @override
   void dispose() {
+    _fetchLocation.closeLocationStream();
     // Clean up or dispose of resources here
     super.dispose();
 
-    rws.disconnect();
+    // rws.disconnect();
   }
 
   @override
@@ -45,13 +51,14 @@ class _LocationPageState extends State<LocationPage> {
         title: Text('Location Page'),
       ),
       body: StreamBuilder(
-        stream: rws.sendRequest(CurrentUser.user['userEmail'], senderEmail),
+        stream: _fetchLocation
+            .locationStream, // rws.sendRequest(CurrentUser.user['userEmail'], senderEmail),
         builder: (context, snapshot) {
           if (snapshot.hasData) {
             print('[print] data in location page ${snapshot.data}');
             // Use the data from the stream to build your UI
-            if (snapshot.data!['status'] == 'SENDER_LOCATION') {
-              Map<String, dynamic> map = snapshot.data!['data'];
+            if (snapshot.data!['STATUS'] == 'SENDER_ONE_TIME_LOCATION') {
+              Map<String, dynamic> map = snapshot.data!['LOCATION'];
               // redirectToGoogleMaps(map['lat']!, map['long']!);
 
               double lat = double.parse(map['lat']!);
@@ -97,7 +104,7 @@ class _LocationPageState extends State<LocationPage> {
               );
             }
             return Center(
-              child: Text(snapshot.data!['message']),
+              child: Text(snapshot.data!['STATUS'] ?? snapshot.data!['ERROR']),
             );
           } else {
             return const Center(

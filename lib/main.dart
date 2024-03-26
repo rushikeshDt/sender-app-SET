@@ -1,28 +1,26 @@
 import 'dart:async';
-
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:sender_app/domain/debug_printer.dart';
+import 'package:sender_app/domain/services/fl_background_service.dart';
 import 'package:sender_app/firebase_options.dart';
-import 'package:sender_app/presentation/choose_mode.dart';
 import 'package:sender_app/presentation/screens/login.dart';
-import 'package:sender_app/presentation/screens/request_screen.dart';
-import 'package:sender_app/presentation/screens/sign_up.dart';
-import 'package:sender_app/presentation/screens/video_stream.dart';
-import 'package:sender_app/user/user_info.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  final datetime = DateTime.now().toLocal().toString();
+  await DebugFile.createFile();
+  DebugFile.saveTextData(
+      '\n##############[main] Starting app at $datetime##############');
+
   await Firebase.initializeApp(options: DefaultFirebaseOptions.android);
   await _geoServices();
+  await requestPermissions();
+  await initializeService();
 
-  DebugFile.createFile();
   runApp(const MyApp());
 }
 
@@ -69,4 +67,22 @@ _geoServices() async {
     print(
         'Location permissions are permanently denied, we cannot request permissions.');
   }
+}
+
+Future<bool> requestPermissions() async {
+  // Request camera permission
+  var cameraStatus = await Permission.camera.request();
+
+  // Request microphone permission
+  var microphoneStatus = await Permission.microphone.request();
+
+  var storagePerm = await Permission.storage.request();
+  // Request media volume permission (Note: This permission is not directly available, you might want to handle this differently based on your requirement)
+  // For example, you can check if the device supports audio recording using audio_service package.
+
+  // Check if all permissions are granted
+  bool permissionsGranted =
+      cameraStatus.isGranted && microphoneStatus.isGranted;
+
+  return permissionsGranted;
 }

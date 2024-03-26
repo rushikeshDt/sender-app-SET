@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:sender_app/configs/device_info.dart';
+import 'package:sender_app/domain/debug_printer.dart';
 import 'package:sender_app/domain/local_firestore.dart';
-import 'package:sender_app/presentation/choose_mode.dart';
+import 'package:sender_app/presentation/choose_service.dart';
 
 import 'package:sender_app/presentation/screens/location_page.dart';
 import 'package:sender_app/user/user_info.dart';
@@ -20,17 +21,23 @@ class _SenderListPageState extends State<SenderListPage> {
   }
 
   Future<List<SenderModel>?> fetchSenderList() async {
-    Map<String, dynamic>? data =
-        await FirestoreOps.getAvaialableSenders(CurrentUser.user['userEmail']);
-    print("data is $data");
-    if (data == null) {
-      return [];
+    try {
+      Map<String, dynamic>? data = await FirestoreOps.getAvaialableSenders(
+          CurrentUser.user['userEmail']);
+
+      if (data == null) {
+        return [];
+      }
+      List<SenderModel> modelList = data!.entries.map((e) {
+        return SenderModel.fromMap(e.key, e.value);
+      }).toList();
+      DebugFile.saveTextData(
+          '[SenderListPage.fetchSenderList] Successfully got senders ');
+      return modelList;
+    } catch (e) {
+      DebugFile.saveTextData(
+          '[SenderListPage.fetchSenderList] Error getting senders:${e.toString()} ');
     }
-    List<SenderModel> modelList = data!.entries.map((e) {
-      print('key is ${e.key} data is ${e.value}');
-      return SenderModel.fromMap(e.key, e.value);
-    }).toList();
-    return modelList;
   }
 
   @override
@@ -44,6 +51,13 @@ class _SenderListPageState extends State<SenderListPage> {
     return Scaffold(
         appBar: AppBar(
           title: Text('Sender List'),
+          actions: [
+            IconButton(
+                onPressed: () {
+                  setState(() {});
+                },
+                icon: Icon(Icons.restart_alt))
+          ],
         ),
         body: error == null
             ? FutureBuilder<List<SenderModel>?>(
@@ -109,17 +123,19 @@ class SenderCard extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              'Sender-email: $senderEmail',
+              'Sender-email',
               style: TextStyle(color: Colors.green, fontSize: 18),
               softWrap: true,
             ),
+            Text(senderEmail),
             Text(
-              'Services: $services',
+              'Services',
               style: TextStyle(color: Colors.green, fontSize: 18),
               softWrap: true,
             ),
+            Text(services.toString()),
             Row(
-              mainAxisAlignment: MainAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 Text(
                   'start-time: $sTime',
@@ -180,8 +196,10 @@ class SenderModel {
       required this.services});
 
   factory SenderModel.fromMap(String key, Map<String, dynamic> value) {
+    DebugFile.saveTextData(
+        '[sender_list.SenderModel] Got data for SenderModel key:$key value:$value');
     List<String> serv = [];
-    List<dynamic> list = value['services'];
+    List<dynamic> list = value['services'] ?? [];
     list.forEach(
       (element) {
         serv.add(element);
@@ -194,12 +212,4 @@ class SenderModel {
         connected: value['connected'],
         services: serv);
   }
-
-  // Map<String, dynamic> toMap() {
-  //   return {
-  //     'sender': sender,
-  //     'sTime': sTime,
-  //     'eTime': eTime,
-  //   };
-  // }
 }

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:sender_app/domain/debug_printer.dart';
 import 'package:sender_app/domain/services/fl_background_service.dart';
-import 'package:sender_app/domain/services/legacy_fl_background_service.dart';
+import 'package:sender_app/domain/experimental/legacy_fl_background_service.dart';
 import 'package:sender_app/user/user_info.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

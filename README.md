@@ -21,3 +21,6 @@ TODO:
 2. add create eventscreen for displaying location access events
 3. split onStart sender connection code to functions if possible
 4. add firebase_firestore
+
+command for reduced size apks:
+flutter build apk --split-per-abi

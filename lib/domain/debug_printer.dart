@@ -19,10 +19,9 @@ class DebugFile {
     final folder = Directory(folderPath);
     if (!await folder.exists()) {
       await folder.create(recursive: true);
-      saveTextData('[DebugFile] Folder for debug file created');
+
       print('[DebugFile] Folder for debug file created');
     } else {
-      saveTextData('[DebugFile] Folder exist. not creating.');
       print('[DebugFile] Folder exist. not creating.');
     }
 
@@ -35,11 +34,10 @@ class DebugFile {
   static Future<void> saveTextData(String data) async {
     if (file != null) {
       await file!.writeAsString(data + "\n", mode: FileMode.append);
-      print('[DebugFile] Data saved.');
     } else {
       print('[DebugFile] File does not exist, creating and saving to file.');
       await createFile();
-      await file!.writeAsString(data + "\n");
+      await file!.writeAsString(data + "\n", mode: FileMode.append);
     }
   }
 
@@ -52,7 +50,7 @@ class DebugFile {
       return contents;
     } catch (e) {
       // Return an empty string if an error occurs (e.g., file not found)
-      saveTextData("[DebugFile] ${e.toString()}");
+      print("[DebugFile] ${e.toString()}");
       throw e;
     }
   }

@@ -18,12 +18,10 @@ class NotificationPage extends StatefulWidget {
 
 class _NotificationPageState extends State<NotificationPage> {
   Future<List<NotificationItem>> getData() async {
-    // Client clnt = Client.getInstance();
-    late List<NotificationItem> notifications = [];
-    final String userEmail = CurrentUser.user['userEmail'];
-    print(" currentUser.user['usermail'] ${CurrentUser.user['userEmail']}");
-
     try {
+      late List<NotificationItem> notifications = [];
+      final String userEmail = CurrentUser.user['userEmail'];
+
       Map<String, dynamic>? map =
           await FirestoreOps.accessNotification(userEmail);
       if (map == null) {
@@ -32,11 +30,6 @@ class _NotificationPageState extends State<NotificationPage> {
       List<MyModel> modelList = map!.entries.map((entry) {
         return MyModel.fromJson(entry.key, entry.value);
       }).toList();
-
-      // Print the list of models
-      modelList.forEach((model) {
-        print(model);
-      });
 
       modelList.forEach((element) {
         notifications.add(NotificationItem(
@@ -48,17 +41,13 @@ class _NotificationPageState extends State<NotificationPage> {
             type: element.type,
             services: element.services));
       });
-
+      DebugFile.saveTextData(
+          '[NotificationPage.getData()] Got notification data');
       return notifications;
-    } catch (err) {
-      Toast(
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(
-              0, 0, 0, DeviceInfo.getDeviceHeight(context) / 4),
-          child: Text(err.toString()),
-        ),
-      );
-      return Future.error(err);
+    } catch (e) {
+      DebugFile.saveTextData(
+          '[NotificationPage.getData()] Error while getting notification data: ${e.toString()}');
+      return Future.error(e);
     }
   }
 
@@ -118,8 +107,6 @@ class _NotificationPageState extends State<NotificationPage> {
                       context: context,
                     );
                   } else {
-                    print(
-                        '[print] message is ${snapshot.data![index].message}');
                     return SimpleNotification(
                       message: snapshot.data![index].message,
                       notId: snapshot.data![index].id,
@@ -143,15 +130,30 @@ class NotificationCard extends StatelessWidget {
   final String endTime;
   final BuildContext context;
   final List<String> services;
+  late final TimeOfDay newEndTime;
+  late final TimeOfDay newStartTime;
 
-  const NotificationCard(
+  NotificationCard(
       {required this.senderEmail,
       required this.message,
       required this.startTime,
       required this.id,
       required this.endTime,
       required this.context,
-      required this.services});
+      required this.services}) {
+    DateTime sdt = DateFormat("h:mm a").parse(startTime);
+    DateTime edt = DateFormat("h:mm a").parse(endTime);
+
+    newEndTime = TimeOfDay.fromDateTime(edt);
+    newStartTime = TimeOfDay.fromDateTime(sdt);
+  }
+  bool checkStartEndTime() {
+    TimeOfDay now = TimeOfDay.now();
+    if (newStartTime.hour < now.hour || newStartTime.minute < now.minute)
+      return false;
+    else
+      return true;
+  }
 
   approveRequest() async {
     await FirestoreOps.respondNotification({
@@ -163,12 +165,7 @@ class NotificationCard extends StatelessWidget {
       "endTime": endTime,
       "services": services
     });
-    DateTime sdt = DateFormat("h:mm a").parse(startTime);
-    DateTime edt = DateFormat("h:mm a").parse(endTime);
-    print('sdt and edt is $sdt $edt');
-    var newEndTime = TimeOfDay.fromDateTime(edt);
-    var newStartTime = TimeOfDay.fromDateTime(sdt);
-    print("newEndTime is ${newEndTime} newStartTime is ${newStartTime}");
+
     setAutoConnect(
         endTime: newEndTime,
         startTime: newStartTime,
@@ -176,11 +173,6 @@ class NotificationCard extends StatelessWidget {
         services: services);
     DebugFile.saveTextData(
         '[NotificationCard] Allowed for ${this.senderEmail} with \nstartTime: $startTime, \nendTime:$endTime, \nservices:$services');
-    print(
-        '[NotificationCard] Allowed for ${this.senderEmail} with \nstartTime: $startTime, \nendTime:$endTime, \nservices:$services');
-    Toast(
-      child: Text("allowed for user ${this.senderEmail}"),
-    ).show(context);
   }
 
   rejectRequest() async {
@@ -190,13 +182,10 @@ class NotificationCard extends StatelessWidget {
       "userResponse": "DENY",
       "requestNotificationId": id,
       "startTime": startTime,
+      'services': services,
       "endTime": endTime,
     });
     DebugFile.saveTextData('[NotificationCard] denied for user ${senderEmail}');
-    print('[NotificationCard] denied for user ${senderEmail}');
-    Toast(
-      child: Text("Denied for user ${this.senderEmail}"),
-    ).show(context);
   }
 
   @override
@@ -216,34 +205,39 @@ class NotificationCard extends StatelessWidget {
             Text('location end time: $endTime'),
             Text('services: $services'),
             SizedBox(height: 8.0),
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      approveRequest();
-                      Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => RequestPage()));
-                    },
-                    child: const Text('Approve'),
+            checkStartEndTime()
+                ? Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            approveRequest();
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => RequestPage()));
+                          },
+                          child: const Text('Approve'),
+                        ),
+                      ),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            rejectRequest();
+                            Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => RequestPage()));
+                          },
+                          child: const Text('Reject'),
+                        ),
+                      ),
+                    ],
+                  )
+                : Text(
+                    "Timeslot expired",
+                    style: TextStyle(color: Colors.red),
                   ),
-                ),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      rejectRequest();
-                      Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => RequestPage()));
-                    },
-                    child: const Text('Reject'),
-                  ),
-                ),
-              ],
-            )
           ],
         ),
       ),
@@ -290,8 +284,10 @@ class MyModel {
       required this.services});
 
   factory MyModel.fromJson(String key, Map<String, dynamic> map) {
+    DebugFile.saveTextData(
+        '[notification_screen.MyModel] Got data in MyModel key: $key value:$map ');
     List<String> serv = [];
-    List<dynamic> list = map['services'];
+    List<dynamic> list = map['services'] ?? [];
     list.forEach(
       (element) {
         serv.add(element);
