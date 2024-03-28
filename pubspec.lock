@@ -384,13 +384,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.5.6+2"
-  hello:
-    dependency: "direct main"
-    description:
-      path: "my_plugin/hello"
-      relative: true
-    source: path
-    version: "0.0.1"
   html:
     dependency: transitive
     description:
@@ -708,22 +701,6 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.99"
-  socket_io_client:
-    dependency: "direct main"
-    description:
-      name: socket_io_client
-      sha256: ede469f3e4c55e8528b4e023bdedbc20832e8811ab9b61679d1ba3ed5f01f23b
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.0.3+1"
-  socket_io_common:
-    dependency: transitive
-    description:
-      name: socket_io_common
-      sha256: "2ab92f8ff3ebbd4b353bf4a98bee45cc157e3255464b2f90f66e09c4472047eb"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.0.3"
   source_span:
     dependency: transitive
     description:
@@ -925,5 +902,5 @@ packages:
     source: hosted
     version: "1.0.4"
 sdks:
-  dart: ">=3.4.0-264.0.dev <4.0.0"
+  dart: ">=3.3.0 <4.0.0"
   flutter: ">=3.19.0"

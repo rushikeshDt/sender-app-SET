@@ -101,6 +101,7 @@ class _RequestPageState extends State<RequestPage> {
                         MaterialPageRoute(
                           builder: (context) => NotificationPage(),
                         ));
+                    // await callNativeMethod();
                   },
                 ),
                 IconButton(

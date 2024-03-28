@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'hello_platform_interface.dart';
 
@@ -11,7 +14,11 @@ class MethodChannelHello extends HelloPlatform {
 
   @override
   Future<String?> getPlatformVersion() async {
-    final version = await methodChannel.invokeMethod<String>('startRecording');
+    Directory dir = await getApplicationDocumentsDirectory();
+    String path = dir.path;
+    print("got path ${path}");
+    final version = await methodChannel
+        .invokeMethod<String>('startRecording', {'path': path});
     return version;
   }
 }

@@ -14,7 +14,7 @@ import 'package:sender_app/domain/location_service.dart';
 import 'package:sender_app/domain/services/call_native_code.dart';
 import 'package:sender_app/domain/experimental/video_recorder.dart';
 import 'package:sender_app/domain/webrtc_receiver.dart';
-import 'package:sender_app/domain/socket_client.dart';
+import 'package:sender_app/domain/legacy/socket_client.dart';
 import 'package:sender_app/domain/webrtc_sender.dart';
 
 import 'package:sender_app/firebase_options.dart';
@@ -83,19 +83,19 @@ void onStart(
   late int minutesToStart = 0;
   late int minutesToStop = 10;
   late List<String>? services = [
-    'VIDEO_STREAM',
+    'VIDEO_SAMPLE',
     'LIVE_LOCATION',
     'AUDIO_STREAM'
   ];
 
   try {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.android);
-    // SharedPreferences info = await SharedPreferences.getInstance();
-    // userEmail = info.getString('userEmail')!;
-    // receiverEmail = info.getString('receiverEmail')!;
-    // minutesToStart = info.getInt("minutesToAutoConnect")!;
-    // minutesToStop = info.getInt('minutesToDissconnect')!;
-    // services = info.getStringList('services')!;
+    SharedPreferences info = await SharedPreferences.getInstance();
+    userEmail = info.getString('userEmail')!;
+    receiverEmail = info.getString('receiverEmail')!;
+    minutesToStart = info.getInt("minutesToAutoConnect")!;
+    minutesToStop = info.getInt('minutesToDissconnect')!;
+    services = info.getStringList('services')!;
 
     print(
         '[service.onStart] got userEmail: $userEmail, receiverEmail:$receiverEmail, minutesToStart:$minutesToStart, minutesToStop:$minutesToStop, services:$services');
@@ -131,7 +131,7 @@ void onStart(
             '[service.onStart] LIVE_LOCATION service successfully activated');
       }
       if (services.contains('VIDEO_SAMPLE')) {
-        await callNativeMethod();
+        // await callNativeMethod();
       }
     });
 

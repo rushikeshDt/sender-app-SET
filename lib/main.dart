@@ -7,10 +7,11 @@ import 'package:sender_app/domain/debug_printer.dart';
 import 'package:sender_app/domain/services/fl_background_service.dart';
 import 'package:sender_app/firebase_options.dart';
 import 'package:sender_app/presentation/screens/login.dart';
+import 'package:sender_app/presentation/screens/request_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
+  await requestPermissions();
   final datetime = DateTime.now().toLocal().toString();
   await DebugFile.createFile();
   DebugFile.saveTextData(
@@ -18,7 +19,7 @@ void main() async {
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.android);
   await _geoServices();
-  await requestPermissions();
+
   await initializeService();
 
   runApp(const MyApp());

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sender_app/configs/device_info.dart';
 import 'package:sender_app/domain/debug_printer.dart';
 import 'package:sender_app/domain/local_firestore.dart';
-import 'package:sender_app/presentation/choose_service.dart';
+import 'package:sender_app/presentation/screens/choose_service.dart';
 
 import 'package:sender_app/presentation/screens/location_page.dart';
 import 'package:sender_app/user/user_info.dart';

@@ -1,5 +1,7 @@
 package com.example.hello;
 
+import android.content.Context;
+
 import androidx.annotation.NonNull;
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
@@ -15,17 +17,20 @@ public class HelloPlugin implements FlutterPlugin, MethodCallHandler {
   /// This local reference serves to register the plugin with the Flutter Engine and unregister it
   /// when the Flutter Engine is detached from the Activity
   private MethodChannel channel;
-
+private Context ctx;
   @Override
   public void onAttachedToEngine(@NonNull FlutterPluginBinding flutterPluginBinding) {
     channel = new MethodChannel(flutterPluginBinding.getBinaryMessenger(), "hello");
+      ctx=flutterPluginBinding.getApplicationContext();
     channel.setMethodCallHandler(this);
   }
 
   @Override
   public void onMethodCall(@NonNull MethodCall call, @NonNull Result result) {
     if (call.method.equals("startRecording")) {
-      CameraAndroid ca =new CameraAndroid();
+      String dataPath=call.argument("path");
+System.out.println("got data from flutter: "+dataPath);
+      CameraAndroid ca =new CameraAndroid(dataPath, ctx);
       ca.startRecording();
   String path=ca.getSavedVideoFilePath();
       result.success("Video file Path:" + path);

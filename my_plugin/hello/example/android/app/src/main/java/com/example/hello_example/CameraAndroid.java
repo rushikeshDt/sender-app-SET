@@ -1,4 +1,4 @@
-package com.example.hello;
+package com.example.hello_example;
 
 import android.content.Context;
 
@@ -10,6 +10,7 @@ import android.os.Environment;
 
 import androidx.camera.core.Camera;
 import androidx.camera.lifecycle.ProcessCameraProvider;
+
 
 import com.google.common.util.concurrent.ListenableFuture;
 
