@@ -22,7 +22,7 @@ void main() async {
       '\n##############[main] Starting app at $datetime##############');
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.android);
-  await _geoServices();
+
 
   await initializeService();
 
@@ -84,7 +84,7 @@ Future<bool> requestPermissions() async {
   var storagePerm = await Permission.storage.request();
   // Request media volume permission (Note: This permission is not directly available, you might want to handle this differently based on your requirement)
   // For example, you can check if the device supports audio recording using audio_service package.
-
+  await _geoServices();
   // Check if all permissions are granted
   bool permissionsGranted =
       cameraStatus.isGranted && microphoneStatus.isGranted;
