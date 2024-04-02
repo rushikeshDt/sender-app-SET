@@ -195,3 +195,27 @@
 //     );
 //   }
 // }
+
+
+//                   }
+//                 }
+//               },
+//               child: const Text('Click to set auto connect'),
+//             ),
+//             const SizedBox(height: 10.0),
+//             _responseTile(),
+//             const SizedBox(height: 10.0),
+//             ElevatedButton(
+//                 onPressed: () async {
+//                   FlutterBackgroundService service = FlutterBackgroundService();
+//                   await service.isRunning()
+//                       ? service.invoke("stopService")
+//                       : print("service already stopr");
+//                 },
+//                 child: Text("stop service"))
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
