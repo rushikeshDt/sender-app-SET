@@ -9,6 +9,7 @@ import 'package:sender_app/domain/set_auto_connect.dart';
 
 import 'package:sender_app/presentation/screens/request_screen.dart';
 import 'package:sender_app/user/user_info.dart';
+import 'package:sender_app/utils/sort.dart';
 
 class NotificationPage extends StatefulWidget {
   NotificationPage();
@@ -31,6 +32,7 @@ class _NotificationPageState extends State<NotificationPage> {
         return MyModel.fromJson(entry.key, entry.value);
       }).toList();
 
+      modelList = sort(modelList);
       modelList.forEach((element) {
         notifications.add(NotificationItem(
             senderEmail: element.senderEmail,
@@ -128,6 +130,8 @@ class NotificationCard extends StatelessWidget {
   final String message;
   final String startTime;
   final String endTime;
+  late final String startTimeLocal;
+  late final String endTimeLocal;
   final BuildContext context;
   final List<String> services;
   late final TimeOfDay newEndTime;
@@ -141,18 +145,26 @@ class NotificationCard extends StatelessWidget {
       required this.endTime,
       required this.context,
       required this.services}) {
-    DateTime sdt = DateFormat("h:mm a").parse(startTime);
-    DateTime edt = DateFormat("h:mm a").parse(endTime);
+    newStartTime = stringToTimeOfDay(startTime);
+    newEndTime = stringToTimeOfDay(endTime);
 
-    newEndTime = TimeOfDay.fromDateTime(edt);
-    newStartTime = TimeOfDay.fromDateTime(sdt);
+    startTimeLocal = newStartTime.format(context).toString();
+    endTimeLocal = newEndTime.format(context).toString();
+    debugPrint("new start end time $newStartTime $newEndTime ");
   }
   bool checkStartEndTime() {
     TimeOfDay now = TimeOfDay.now();
-    if (newStartTime.hour < now.hour || newStartTime.minute < now.minute)
-      return false;
-    else
-      return true;
+    if (newStartTime.hour < now.hour) return false;
+    if (newStartTime.minute < now.minute) return false;
+
+    return true;
+  }
+
+  TimeOfDay stringToTimeOfDay(String inputTime) {
+    int hour = int.parse(inputTime.split(":")[0]);
+    int minute = int.parse(inputTime.split(":")[1]);
+
+    return TimeOfDay(hour: hour, minute: minute);
   }
 
   approveRequest() async {
@@ -166,6 +178,8 @@ class NotificationCard extends StatelessWidget {
       "services": services
     });
 
+    print("newStartTime: $newStartTime");
+    print("newEndTime: $newEndTime");
     setAutoConnect(
         endTime: newEndTime,
         startTime: newStartTime,
@@ -201,11 +215,13 @@ class NotificationCard extends StatelessWidget {
                 style: TextStyle(fontWeight: FontWeight.bold)),
             SizedBox(height: 8.0),
             Text('message: $message'),
-            Text('location start time: $startTime'),
-            Text('location end time: $endTime'),
+            Text('location start time: $startTimeLocal'),
+            Text('location end time: $endTimeLocal'),
             Text('services: $services'),
             SizedBox(height: 8.0),
-            checkStartEndTime()
+            // checkStartEndTime()
+
+            true
                 ? Row(
                     children: <Widget>[
                       Expanded(

@@ -17,8 +17,8 @@ class FirestoreOps {
     List<String> services = notification["services"];
 
     try {
-      Random random = Random();
-      int notId = random.nextInt(100);
+      String notId = DateTime.now().toLocal().toString();
+
       print("[LocalFirestore.sendNotification] notId $notId");
       DebugFile.saveTextData("[LocalFirestore.sendNotification] notId $notId");
 
@@ -28,7 +28,7 @@ class FirestoreOps {
           .doc(receiverEmail)
           .set(
         {
-          '$notId': {
+          notId: {
             'senderEmail': userEmail,
             'type': type,
             'message': message,
@@ -55,9 +55,6 @@ class FirestoreOps {
   static Future<dynamic> accessNotification(String userEmail) async {
     String _userEmail = userEmail;
     try {
-      print("[LocalFirestore.accessNotification] userEmail is $_userEmail");
-      DebugFile.saveTextData(
-          "[LocalFirestore.accessNotification] userEmail is $_userEmail");
       DocumentSnapshot userDocSnapshot = await FirebaseFirestore.instance
           .collection('notifications')
           .doc(userEmail)
@@ -65,7 +62,7 @@ class FirestoreOps {
       Map<String, dynamic>? response =
           userDocSnapshot.data() as Map<String, dynamic>?;
 
-      print(response);
+      DebugFile.saveTextData("notification document obtained");
       if (response == null) {
         print('[LocalFirestore.accessNotification] no data for notifications');
         DebugFile.saveTextData(

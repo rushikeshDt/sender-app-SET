@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:flutter/material.dart';
@@ -14,6 +15,7 @@ import 'package:sender_app/presentation/screens/about_screen.dart';
 import 'package:sender_app/presentation/screens/login.dart';
 import 'package:sender_app/presentation/screens/notification_screen.dart';
 import 'package:sender_app/presentation/screens/sender_list_page.dart';
+import 'package:sender_app/utils/sort.dart';
 import 'package:sender_app/user/user_info.dart';
 import 'package:sender_app/utils/extensions/time_of_day_extension.dart';
 import 'package:sender_app/utils/validate_email.dart';
@@ -39,7 +41,7 @@ class _RequestPageState extends State<RequestPage> {
       context: context,
       initialTime: TimeOfDay.now(),
     );
-
+    print("picked time" + pickedTime.toString());
     if (pickedTime != null) {
       setState(() {
         startEndType == 0 ? startTime = pickedTime : endTime = pickedTime;
@@ -57,6 +59,7 @@ class _RequestPageState extends State<RequestPage> {
 
   bool checkStartEndTime(TimeOfDay time1, TimeOfDay time2) {
     int code = time1.CompareTo(time2);
+    debugPrint("code is $code");
     switch (code) {
       case 1:
         setState(() {
@@ -107,6 +110,11 @@ class _RequestPageState extends State<RequestPage> {
                 IconButton(
                   icon: Icon(Icons.logout),
                   onPressed: () async {
+                    var service = FlutterBackgroundService();
+                    bool status = await service.isRunning();
+                    if (status) {
+                      service.invoke('stopService');
+                    }
                     await FirebaseAuth.instance.signOut();
                     final prefs = await SharedPreferences.getInstance();
 
@@ -332,13 +340,17 @@ class _RequestPageState extends State<RequestPage> {
                             }
                             DebugFile.saveTextData(
                                 '[RequestPage] Sending request');
-
+                            var newStartTime =
+                                "${startTime.hour}:${startTime.minute}";
+                            var newEndTime =
+                                "${endTime.hour}:${endTime.minute}";
+                            print("starttime $newStartTime $newEndTime");
                             //creating notification
                             final Map<String, dynamic> data = {
                               "userEmail": CurrentUser.user['userEmail'],
                               "receiverEmail": rIdTxtCntrl.text,
-                              "startTime": startTime.format(context),
-                              "endTime": endTime.format(context),
+                              "startTime": newStartTime,
+                              "endTime": newEndTime,
                               'services': services,
                               "type": "REQUEST"
                             };

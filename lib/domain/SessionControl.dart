@@ -36,8 +36,9 @@ class SessionControl {
 
     // Commit the batch
     await batch.commit();
+    print('[SessionControl.deleteSession] session deleted for $userEmail');
     DebugFile.saveTextData(
-        '[fl_background_services.deleteSession] Session deleted for $userEmail');
+        '[SessionControl.deleteSession] Session deleted for $userEmail');
   }
 
   static Future<void> sendMessage({
