@@ -8,25 +8,26 @@ class FetchLocation {
   // late final DocumentSnapshot senderMessagesDocument;
   late StreamController<Map<String, dynamic>> _myStreamController;
   late Stream<Map<String, dynamic>> _locationStream;
-
+  late StreamSubscription subscription;
   late String senderEmail;
   late String userEmail;
   static FetchLocation? _instance;
   static FetchLocation getInstance({required String senderEmail}) {
     _instance ??= FetchLocation();
-    _instance!.userEmail =
-        CurrentUser.user['userEmail']; //CurrentUser.user['userEmail'];
+    _instance!.userEmail = CurrentUser.user['userEmail'];
     _instance!.senderEmail = senderEmail;
 
     return _instance!;
   }
 
-  closeLocationStream() {
-    _myStreamController.close();
+  closeLocationStream() async {
+    await subscription.cancel();
+    await _myStreamController.close();
   }
 
   openLocationStream() {
     _myStreamController = StreamController<Map<String, dynamic>>();
+
     _locationStream = _myStreamController.stream;
   }
 
@@ -52,9 +53,12 @@ class FetchLocation {
   // }
 
   sendLocationRequest() async {
-    _myStreamController.add({
-      'STATUS': 'SENDING_REQUEST',
-    });
+    if (!_myStreamController.isClosed) {
+      _myStreamController.add({
+        'STATUS': 'SENDING_REQUEST',
+      });
+    }
+
     try {
       await FirebaseFirestore.instance
           .collection('sessions')
@@ -66,7 +70,7 @@ class FetchLocation {
       DebugFile.saveTextData(
           '[FetchLocation.sendLocationRequest] Request sent');
 
-      await FirebaseFirestore.instance
+      subscription = FirebaseFirestore.instance
           .collection('sessions')
           .doc(userEmail)
           .collection(senderEmail)
@@ -78,15 +82,20 @@ class FetchLocation {
         DebugFile.saveTextData(
             '[fetchLocation.sendLocationRequest] Got response ${snapshot.data()}');
         if (snapshot.exists) {
-          _myStreamController.add({
-            'STATUS': 'SENDER_ONE_TIME_LOCATION',
-            'LOCATION': snapshot.data()!['location']
-          });
+          if (!_myStreamController.isClosed) {
+            _myStreamController.add({
+              'STATUS': 'SENDER_ONE_TIME_LOCATION',
+              'LOCATION': snapshot.data()!['location']
+            });
+          }
         } else {
           print('[FetchLocation.sendLocationRequest] snapshot does not exist');
           DebugFile.saveTextData(
               '[FetchLocation.sendLocationRequest] snapshot does not exist');
-          _myStreamController.add({'ERROR': "snapshot does not exist"});
+          if (!_myStreamController.isClosed) {
+            _myStreamController
+                .add({'ERROR': "getting location(waiting for sender to send)"});
+          }
         }
       });
     } catch (e) {
@@ -94,8 +103,10 @@ class FetchLocation {
           '[FetchLocation.sendLocationRequest] Error sending request: ${e.toString()}');
       DebugFile.saveTextData(
           '[FetchLocation.sendLocationRequest] Error sending request: ${e.toString()}');
-      _myStreamController
-          .add({'ERROR': "Error sending request: ${e.toString()}"});
+      if (!_myStreamController.isClosed) {
+        _myStreamController
+            .add({'ERROR': "Error sending request: ${e.toString()}"});
+      }
     }
   }
 }

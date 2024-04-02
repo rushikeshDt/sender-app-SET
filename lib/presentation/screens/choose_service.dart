@@ -145,7 +145,7 @@ class _ServicePageState extends State<ServicePage> {
                                                                   options: {
                                                                     'FRONT_CAM':
                                                                         false,
-                                                                    'ADUIO_ONLY':
+                                                                    'AUDIO_ONLY':
                                                                         false
                                                                   })));
                                                 },
