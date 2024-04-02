@@ -101,7 +101,103 @@
 //   //     ),
 //   //   );
 //   // }
+//   //       ],
+//   //     ),
+//   //   );
+//   // }
 
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       resizeToAvoidBottomInset: false,
+//       appBar: AppBar(
+//         title: Row(
+//           mainAxisAlignment: MainAxisAlignment.start,
+//           children: [
+//             Text("Sender Page"),
+//             IconButton(
+//                 onPressed: () {
+//                   Navigator.pushAndRemoveUntil(
+//                       context,
+//                       MaterialPageRoute<void>(
+//                           builder: (BuildContext context) => ReceiverPage()),
+//                       (route) => false);
+//                 },
+//                 icon: const Icon(Icons.change_circle))
+//           ],
+//         ),
+//       ),
+//       body: Padding(
+//         padding: EdgeInsets.all(16.0),
+//         child: Column(
+//           mainAxisAlignment: MainAxisAlignment.center,
+//           children: [
+//             TextField(
+//               controller: textController1,
+//               decoration: InputDecoration(labelText: 'sender id'),
+//             ),
+//             const SizedBox(height: 10.0),
+//             ElevatedButton(
+//                 onPressed: () => _selectStartTime(context),
+//                 child: Text(_startTime == null
+//                     ? "select start time "
+//                     : _startTime!.format(context).toString())),
+//             const SizedBox(height: 10.0),
+//             ElevatedButton(
+//                 onPressed: () => _selectEndTime(context),
+//                 child: Text(_endTime == null
+//                     ? "select end time "
+//                     : _endTime!.format(context).toString())),
+//             const SizedBox(height: 10.0),
+//             ElevatedButton(
+//               style: ButtonStyle(),
+//               onPressed: () {
+//                 setState(() {
+//                   senderId = textController1.text;
+//                 });
+//                 // Add your button functionality here
+//                 print('Button Pressed');
+//                 print('''senderId : ${textController1.text} 
+//                     startTIme: ${_startTime!.format(context).toString()} 
+//                     endTIme:${_endTime!.format(context).toString()} ''');
+//                 if (senderId != null &&
+//                     _startTime != null &&
+//                     _endTime != null) {
+//                   setAutoConnect(
+//                     startTime: _startTime!,
+//                     endTime: _endTime!,
+//                     senderId: senderId!,
+//                   );
+//                 } else {
+//                   if (senderId == null) {
+//                     print("senderId has not been entered");
+//                   }
+//                   if (_startTime == null) {
+//                     print("startTime has not been entered");
+//                   }
+//                   if (_endTime == null) {
+//                     print("endTime has not been entered");
+//                   }
+//                 }
+//               },
+//               child: const Text('Click to set auto connect'),
+//             ),
+//             const SizedBox(height: 10.0),
+//             _responseTile(),
+//             const SizedBox(height: 10.0),
+//             ElevatedButton(
+//                 onPressed: () async {
+//                   FlutterBackgroundService service = FlutterBackgroundService();
+//                   await service.isRunning()
+//                       ? service.invoke("stopService")
+//                       : print("service already stopr");
+//                 },
+//                 child: Text("stop service"))
+//           ],
+//         ),
+//       ),
+//     );
+//   }
 //   @override
 //   Widget build(BuildContext context) {
 //     return Scaffold(
